@@ -1,0 +1,38 @@
+---
+title: Self-host with Docker
+description: Get Maia running on your laptop/server in 10 minutes (App + Runner).
+---
+
+import { Aside, LinkCard ,Steps } from "@astrojs/starlight/components"
+
+Docker mode runs two services:
+
+- **App (control plane)**: UI + scheduler/state machine + SQLite + SSE
+- **Runner (execution plane)**: isolated execution (starts sandbox containers and streams logs back)
+
+## Quick start
+
+<Steps>
+1. Download `docker-compose.release.yml` and `.env.production`
+
+   ```bash
+    curl -fsSL -o docker-compose.release.yml https://raw.githubusercontent.com/obiscr/maia/main/docker-compose.release.yml
+    curl -fsSL -o .env.production https://raw.githubusercontent.com/obiscr/maia/main/env.example
+    ```
+
+2. Edit `.env.production` and set `RUNNER_TOKEN`.
+
+    ```dotenv
+    RUNNER_TOKEN=your-token
+    ```
+
+3. Start
+
+    ```bash
+    docker compose -f docker-compose.release.yml --env-file .env.production up -d
+    ```
+</Steps>
+
+## Set up
+
+<LinkCard title="Initial setup" description="Open http://localhost:3690 to run the initial setup wizard." href="http://localhost:3690" />

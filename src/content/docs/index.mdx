@@ -1,0 +1,40 @@
+---
+title: Maia Docs
+head:
+  - tag: title
+    content: Maia Docs
+description: Maia is a self-hosted workflow orchestration and execution (DAG) service for long-running automation—observable, debuggable, and replayable.
+template: splash
+editUrl: false
+lastUpdated: false
+hero:
+  title: Self-hosted workflow engine
+  tagline: An “observable + replayable” execution platform for long-running automation. Persisted state & outputs, real-time log/event streams, and isolated execution (Runner/Sandbox) so automation isn’t a black-box script anymore.
+  image:
+    file: ~/assets/logo.svg
+  actions:
+    - text: Quick start
+      icon: right-arrow
+      link: /quick-start/docker/
+    - text: View on GitHub
+      icon: external
+      variant: minimal
+      link: https://github.com/obiscr/maia
+---
+
+import { CardGrid, Card } from "@astrojs/starlight/components"
+
+<CardGrid>
+  <Card title="Persistent & traceable" icon="open-book">
+    States and results are persisted (SQLite), with a complete record for every run. Retry, rerun, or replay after failures—avoid the unpredictability of one-off scripts.
+  </Card>
+  <Card title="Real-time observability & replay" icon="rocket">
+    Stream logs and events as execution happens. Inspect/download inputs, outputs, files, and artifacts to debug faster—and make reproduction and auditing straightforward.
+  </Card>
+  <Card title="Isolated execution (executor + sandbox)" icon="document">
+    In production, split “orchestration & state” from “execution & isolation”: the control plane schedules and persists, while executors run in sandboxed containers and report logs and artifacts back.
+  </Card>
+  <Card title="Composable workflow graphs" icon="puzzle">
+    Break work into steps with clear inputs/outputs, explicit dependencies, and deliverable artifacts—ideal for evolving ad-hoc scripts into long-lived, maintainable automation systems.
+  </Card>
+</CardGrid>

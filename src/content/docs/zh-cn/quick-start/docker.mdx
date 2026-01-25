@@ -1,0 +1,38 @@
+---
+title: Docker 自托管
+description: 10 分钟在本机/服务器上跑起 Maia（App + Runner）。
+---
+
+import { Aside, LinkCard ,Steps } from "@astrojs/starlight/components"
+
+Docker 模式会运行两个服务：
+
+- **App（控制面）**：UI + 调度/状态机 + SQLite + SSE
+- **Runner（执行面）**：隔离执行（启动 sandbox 容器并回传日志）
+
+## 快速启动
+
+<Steps>
+1. 下载 `docker-compose.release.yml` 和 `.env.production`
+
+   ```bash
+    curl -fsSL -o docker-compose.release.yml https://raw.githubusercontent.com/obiscr/maia/main/docker-compose.release.yml
+    curl -fsSL -o .env.production https://raw.githubusercontent.com/obiscr/maia/main/env.example
+    ```
+
+2. 编辑 `.env.production` 文件，设置 `RUNNER_TOKEN`。
+
+    ```dotenv
+    RUNNER_TOKEN=your-token
+    ```
+
+3. 启动预览
+
+    ```bash
+    docker compose -f docker-compose.release.yml --env-file .env.production up -d
+    ```
+</Steps>
+
+## 安装
+
+<LinkCard title="初始化设置" description="打开 http://localhost:3690 进行初始化设置。" href="http://localhost:3690" />

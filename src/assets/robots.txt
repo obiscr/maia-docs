@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+# Use a relative sitemap path to avoid hard-coding a domain.
+Sitemap: /sitemap-index.xml

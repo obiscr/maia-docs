@@ -1,0 +1,31 @@
+---
+title: Architecture & components
+description: How the control plane, execution plane, and isolated execution (Runner/Sandbox) work together.
+---
+
+This page explains how Maia works from a “components view” so you can quickly pinpoint issues when deploying, troubleshooting, or scaling.
+
+## Two planes: control vs execution
+
+- **App (control plane)**
+  - Web UI
+  - Scheduler & state machine
+  - SQLite (persistence for state & outputs)
+  - Real-time event stream (SSE: logs/events/replay)
+
+- **Runner (execution plane)**
+  - Starts/stops sandbox containers
+  - Collects and streams back stdout/stderr and execution events
+  - Persists execution artifacts (outputs/files/artifacts) to the data directory
+
+## Why split into two services?
+
+- **Security & isolation**: keep “untrusted/high-risk execution” on the execution plane, isolated by containers
+- **Stability**: the control plane owns “state & orchestration” so you don’t lose state when a single run crashes
+- **Scalability**: most execution load sits on Runner, which can be scaled independently as needed
+
+## Key dependencies & configuration
+
+- **`RUNNER_TOKEN`**: must match between App and Runner (otherwise Runner can’t register/authenticate)
+- **Data directory**: persists SQLite and run artifacts (see “Deployment & operations → Data directory & backups”)
+- **Sandbox image**: Runner must be able to pull it, or use a locally built sandbox image

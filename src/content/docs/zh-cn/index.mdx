@@ -1,0 +1,40 @@
+---
+title: Maia 文档
+head:
+  - tag: title
+    content: Maia 文档
+description: Maia 是一个自托管的工作流编排与执行（DAG）服务，用于长时间自动化任务：可观测、可调试、可回放。
+template: splash
+editUrl: false
+lastUpdated: false
+hero:
+  title: 自托管工作流引擎
+  tagline: 面向长时间自动化任务的“可观测 + 可回放”执行平台。持久化状态与输出、实时日志事件流、隔离执行（Runner/Sandbox），让自动化不再是黑盒脚本。
+  image:
+    file: ~/assets/logo.svg
+  actions:
+    - text: 快速入门
+      icon: right-arrow
+      link: /zh-cn/quick-start/docker/
+    - text: 在 GitHub 查看
+      icon: external
+      variant: minimal
+      link: https://github.com/obiscr/maia
+---
+
+import { CardGrid, Card } from "@astrojs/starlight/components"
+
+<CardGrid>
+  <Card title="持久化与可追溯" icon="open-book">
+    状态与结果落盘保存（SQLite），每次执行都有完整记录；失败后可重试、可重跑、可回放，避免“一次性脚本”的不可控。
+  </Card>
+  <Card title="实时可观测与回放" icon="rocket">
+    执行过程实时输出日志与事件；输入、输出、文件与产物都可查看/下载，定位问题更快，也更容易复现与审计。
+  </Card>
+  <Card title="隔离执行（执行器 + 沙盒容器）" icon="document">
+    推荐生产把“编排与状态”与“执行与隔离”拆开：控制面负责调度与持久化，执行器在沙盒容器内运行并回传日志与产物。
+  </Card>
+  <Card title="可组合的工作流图" icon="puzzle">
+    用步骤化编排把任务拆小：输入输出清晰、依赖关系明确、产物可交付；适合把零散脚本演进成长期可维护的自动化系统。
+  </Card>
+</CardGrid>
