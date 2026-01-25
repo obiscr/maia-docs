@@ -22,11 +22,11 @@ Docker 模式会运行两个服务：
 
 2. 编辑 `.env.production` 文件，设置 `RUNNER_TOKEN`。
 
-    ```dotenv
+    ```dotenv title=".env.production"
     RUNNER_TOKEN=your-token
     ```
 
-3. 启动预览
+3. 启动容器
 
     ```bash
     docker compose -f docker-compose.release.yml --env-file .env.production up -d
@@ -36,3 +36,12 @@ Docker 模式会运行两个服务：
 ## 安装
 
 <LinkCard title="初始化设置" description="打开 http://localhost:3690 进行初始化设置。" href="http://localhost:3690" />
+
+## 获取更新
+
+当你使用 `docker-compose.release.yml`（预构建镜像）部署时，更新通常是“拉取新镜像 → 重建并重启”：
+
+```bash
+docker compose -f docker-compose.release.yml --env-file .env.production pull
+docker compose -f docker-compose.release.yml --env-file .env.production up -d --remove-orphans
+```

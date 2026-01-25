@@ -22,7 +22,7 @@ Docker mode runs two services:
 
 2. Edit `.env.production` and set `RUNNER_TOKEN`.
 
-    ```dotenv
+    ```dotenv title=".env.production"
     RUNNER_TOKEN=your-token
     ```
 
@@ -36,3 +36,12 @@ Docker mode runs two services:
 ## Set up
 
 <LinkCard title="Initial setup" description="Open http://localhost:3690 to run the initial setup wizard." href="http://localhost:3690" />
+
+## Get updates
+
+When you use `docker-compose.release.yml` (pre-built image) to deploy, updates usually involve “pulling new image → rebuilding and restarting”:
+
+```bash
+docker compose -f docker-compose.release.yml --env-file .env.production pull
+docker compose -f docker-compose.release.yml --env-file .env.production up -d --remove-orphans
+```

@@ -1,0 +1,107 @@
+---
+title: 本地 Docker 运行
+description: 从源码构建 Maia，并使用 Docker Compose 运行 App + Runner。
+---
+
+import { Aside, LinkCard, Steps, Tabs, TabItem } from "@astrojs/starlight/components"
+
+本指南会从 **源码仓库** 启动 Maia，但运行方式是 **Docker（App + Runner）**。相比 `pnpm dev` 更接近生产环境。
+
+## 前置要求
+
+- Docker + Docker Compose v2
+- Git
+
+## 启动 Maia
+
+<Steps>
+1. 克隆源码仓库
+
+   ```bash
+   git clone https://github.com/obiscr/maia.git
+   cd maia
+   ```
+
+2. 创建 env 文件
+
+   ```bash
+   cp env.example .env.production
+   ```
+
+3. 编辑 `.env.production`（至少需要）
+
+   ```dotenv  title=".env.production"
+   RUNNER_TOKEN=your-token
+   ```
+
+   更接近生产的推荐项：
+
+   ```dotenv  title=".env.production" ins={2}
+   RUNNER_TOKEN=your-token
+   SETTINGS_ENCRYPTION_KEY=your-stable-key
+   ```
+
+4. 构建 sandbox 镜像
+
+   ```bash
+   docker build -f Dockerfile.sandbox -t maia-sandbox .
+   ```
+
+   然后在 `.env.production` 文件里设置 `MAIA_SANDBOX_IMAGE=maia-sandbox` 并重启。
+
+   ```dotenv title=".env.production" ins={3}
+   RUNNER_TOKEN=your-token
+   SETTINGS_ENCRYPTION_KEY=your-stable-key
+   MAIA_SANDBOX_IMAGE=maia-sandbox
+   ```
+
+5. 构建并启动
+
+   ```bash
+   docker compose --env-file .env.production up -d --build
+   ```
+</Steps>
+
+启动后打开：
+
+<LinkCard title="打开 Maia" description="Docker 默认端口：http://localhost:3690" href="http://localhost:3690" target="_blank" />
+
+## 数据存储位置
+
+Docker模式下，数据默认存储在 Docker named volume。如果你希望落到宿主机目录，可设置：
+
+```dotenv title=".env.production"
+MAIA_DATA_MOUNT_TYPE=bind
+MAIA_HOST_DATA_DIR=/absolute/path/on/host
+```
+
+例如：
+
+<Tabs syncKey="os">
+<TabItem label="macOS">
+   ```dotenv title=".env.production"
+   MAIA_HOST_DATA_DIR=/Users/alice/maia-data
+   ```
+</TabItem>
+<TabItem label="Linux">
+   ```dotenv title=".env.production"
+   MAIA_HOST_DATA_DIR=/home/alice/maia-data
+   ```
+</TabItem>
+<TabItem label="Windows">
+   ```dotenv title=".env.production"
+   MAIA_HOST_DATA_DIR=C:\Users\alice\maia-data
+   ```
+</TabItem>
+</Tabs>
+
+设置完成之后需要重启容器。
+
+## 获取更新
+
+当 `maia` 源码有更新时，在源码目录下执行：
+
+```bash
+git pull
+docker compose --env-file .env.production up -d --build
+```

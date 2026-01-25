@@ -19,7 +19,7 @@ const ogImageAlt = "Maia Docs"
 
 export default defineConfig({
   site,
-  trailingSlash: "always",
+  trailingSlash: "ignore",
   integrations: [
     starlight({
       title: "Maia Docs",
@@ -62,7 +62,7 @@ export default defineConfig({
           items: [
             {
               label: "Self-host with Docker",
-              slug: "quick-start/docker",
+              slug: "quick-start/self-host",
               translations: { "zh-CN": "Docker 自托管" },
             },
             {
@@ -74,6 +74,16 @@ export default defineConfig({
               label: "First workflow",
               slug: "quick-start/first-workflow",
               translations: { "zh-CN": "运行第一个工作流" },
+            },
+            {
+              label: "Run locally with Dev",
+              slug: "quick-start/build-from-source-dev",
+              translations: { "zh-CN": "本地 Dev 运行" },
+            },
+            {
+              label: "Run locally with Docker",
+              slug: "quick-start/build-from-source-docker",
+              translations: { "zh-CN": "本地 Docker 运行" },
             },
           ],
         },

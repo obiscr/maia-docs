@@ -1,0 +1,107 @@
+---
+title: Local Docker run
+description: Build Maia from source and run App + Runner with Docker Compose.
+---
+
+import { Aside, LinkCard, Steps, Tabs, TabItem } from "@astrojs/starlight/components"
+
+This guide will start Maia from the **source code repository**, but the running way is **Docker (App + Runner)**. It's closer to production environment than `pnpm dev`.
+
+## Prerequisites
+
+- Docker + Docker Compose v2
+- Git
+
+## Start Maia
+
+<Steps>
+1. Clone the source repo
+
+   ```bash
+   git clone https://github.com/obiscr/maia.git
+   cd maia
+   ```
+
+2. Create env file
+
+   ```bash
+   cp env.example .env.production
+   ```
+
+3. Edit `.env.production` (minimum required)
+
+   ```dotenv  title=".env.production"
+   RUNNER_TOKEN=your-token
+   ```
+
+   Recommended for production:
+
+   ```dotenv  title=".env.production" ins={2}
+   RUNNER_TOKEN=your-token
+   SETTINGS_ENCRYPTION_KEY=your-stable-key
+   ```
+
+4. Build sandbox image
+
+   ```bash
+   docker build -f Dockerfile.sandbox -t maia-sandbox .
+   ```
+
+   Then set `MAIA_SANDBOX_IMAGE=maia-sandbox` in `.env.production` file and restart.
+
+   ```dotenv title=".env.production" ins={3}
+   RUNNER_TOKEN=your-token
+   SETTINGS_ENCRYPTION_KEY=your-stable-key
+   MAIA_SANDBOX_IMAGE=maia-sandbox
+   ```
+
+5. Build and start
+
+   ```bash
+   docker compose --env-file .env.production up -d --build
+   ```
+</Steps>
+
+Then open:
+
+<LinkCard title="Open Maia" description="Docker default port: http://localhost:3690" href="http://localhost:3690" target="_blank" />
+
+## Data storage location
+
+In Docker mode, data is stored in Docker named volume by default. If you want to store it on the host machine, you can set:
+
+```dotenv title=".env.production"
+MAIA_DATA_MOUNT_TYPE=bind
+MAIA_HOST_DATA_DIR=/absolute/path/on/host
+```
+
+For example:
+
+<Tabs syncKey="os">
+<TabItem label="macOS">
+   ```dotenv title=".env.production"
+   MAIA_HOST_DATA_DIR=/Users/alice/maia-data
+   ```
+</TabItem>
+<TabItem label="Linux">
+   ```dotenv title=".env.production"
+   MAIA_HOST_DATA_DIR=/home/alice/maia-data
+   ```
+</TabItem>
+<TabItem label="Windows">
+   ```dotenv title=".env.production"
+   MAIA_HOST_DATA_DIR=C:\Users\alice\maia-data
+   ```
+</TabItem>
+</Tabs>
+
+After setting, you need to restart the container.
+
+## Get updates
+
+When `maia` source code has updates, run the following commands in the source code directory:
+
+```bash
+git pull
+docker compose --env-file .env.production up -d --build
+```

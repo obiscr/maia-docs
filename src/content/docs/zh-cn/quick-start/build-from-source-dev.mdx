@@ -1,0 +1,62 @@
+---
+title: 本地 Dev 运行
+description: 本地开发运行 Maia（pnpm dev，支持热更新）。
+---
+
+import { Aside, LinkCard, Steps } from "@astrojs/starlight/components"
+
+本地 Dev 模式一般用于快速的 **开发/调试**。Dev 模式下，步骤执行可以不依赖 Runner / sandbox 隔离。
+
+## 前置要求
+
+- Node.js 20+
+- pnpm
+- Git
+
+## 启动 Maia
+
+<Steps>
+1. 克隆源码仓库
+
+   ```bash
+   git clone https://github.com/obiscr/maia.git
+   cd maia
+   ```
+
+2. 安装依赖
+
+   ```bash
+   corepack enable
+   pnpm install
+   ```
+
+3. 启动开发服务
+
+   ```bash
+   pnpm dev
+   ```
+</Steps>
+
+启动后打开：
+
+<LinkCard title="打开 Maia" description="Dev 默认端口：http://localhost:3000" href="http://localhost:3000" target="_blank" />
+
+## 数据存储位置
+
+在本地模式，数据将默认存储在以下位置。
+
+- **macOS**：`/Users/alice/Library/Application Support/maia-data`
+- **Linux**：`/home/alice/.local/share/maia-data`
+- **Windows**：`C:\Users\alice\AppData\Local\maia-data`
+
+## 获取更新
+
+当 `maia` 仓库有更新时，在源码目录下执行：
+
+```bash
+git pull
+pnpm install
+pnpm dev
+```
+
+如果你本地有未提交改动，先处理冲突/提交再更新。

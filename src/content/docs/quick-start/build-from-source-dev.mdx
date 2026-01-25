@@ -1,0 +1,62 @@
+---
+title: Run locally with Dev
+description: Run Maia locally with Dev (pnpm dev, supports hot update).
+---
+
+import { Aside, LinkCard, Steps } from "@astrojs/starlight/components"
+
+Local Dev mode is usually used for quick **development/debugging**. In Dev mode, steps execution can be independent of Runner / sandbox isolation.
+
+## Prerequisites
+
+- Node.js 20+
+- pnpm
+- Git
+
+## Start Maia
+
+<Steps>
+1. Clone the source repo
+
+   ```bash
+   git clone https://github.com/obiscr/maia.git
+   cd maia
+   ```
+
+2. Install dependencies
+
+   ```bash
+   corepack enable
+   pnpm install
+   ```
+
+3. Start development service
+
+   ```bash
+   pnpm dev
+   ```
+</Steps>
+
+Then open:
+
+<LinkCard title="Open Maia" description="Dev default port: http://localhost:3000" href="http://localhost:3000" target="_blank" />
+
+## Data storage location
+
+In local mode, data will be stored in the following location by default.
+
+- **macOS**: `/Users/alice/Library/Application Support/maia-data`
+- **Linux**: `/home/alice/.local/share/maia-data`
+- **Windows**: `C:\Users\alice\AppData\Local\maia-data`
+
+## Get updates
+
+When `maia` repository has updates, run the following commands in the source code directory:
+
+```bash
+git pull
+pnpm install
+pnpm dev
+```
+
+If you have local uncommitted changes, resolve conflicts/commit them first before updating.
