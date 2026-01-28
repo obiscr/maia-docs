@@ -1,0 +1,52 @@
+---
+title: Environment variables
+description: Configure and manage workflow-level environment variables, safely passing configuration information and secrets.
+---
+
+import { Aside } from "@astrojs/starlight/components"
+
+Environment variables are used to save the **configuration and secrets** required for workflow execution, and are injected into the `env` parameter of `main(env, ctx)` at step execution time.
+
+## Rules
+
+- Key rules
+  - Must match `^[A-Za-z_][A-Za-z0-9_]*$`
+  - Maximum length 128
+  - Not allowed to repeat
+
+- Value rules
+  - Must be a string
+  - Maximum length 8192
+
+<Aside type="tip" title="Naming suggestion">
+Recommended to use all uppercase with underscore (e.g. `API_TOKEN`), better readability.
+</Aside>
+
+## Platform reserved and injected variables
+
+The key names starting with `MAIA_` are reserved by the platform, **the system will automatically ignore them.**
+
+The platform will inject these variables (read-only) at execution time:
+
+- **Execution identifier**：`MAIA_RUN_ID`、`MAIA_STEP_KEY`、`MAIA_ATTEMPT_NO`
+- **Path information**：`MAIA_INPUT_PATH`、`MAIA_OUTPUT_PATH`、`MAIA_RUN_DIR`、`MAIA_ATTEMPT_DIR`
+- **Workflow information**：`MAIA_WORKFLOW_ID`、`MAIA_WORKFLOW_DEPS_HASH`
+
+## Use in steps
+
+```javascript
+export default {
+  async main(env, ctx) {
+    const apiBase = env.API_BASE;
+    const token = env.API_TOKEN;
+    const timeoutMs = env.TIMEOUT_MS ? parseInt(env.TIMEOUT_MS, 10) : 30_000;
+
+    const resp = await fetch(`${apiBase}/data`, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+
+    return { outputs: { data: await resp.json() } };
+  },
+};
+```

@@ -56,6 +56,27 @@ When `maia` repository has updates, run the following commands in the source cod
 ```bash
 git pull
 pnpm install
+```
+
+### Update database
+
+If the update includes database migrations (new or modified table structures), you need to run the migration command:
+
+```bash
+pnpm prisma:migrate
+```
+
+This command will apply new migration files from the `prisma/migrations/` directory.
+
+<Aside type="tip" title="Auto-migration">
+Maia automatically runs migrations on first startup or when the database is uninitialized. However, to ensure timely application of the latest database changes, it's recommended to manually run the migration command after updates.
+</Aside>
+
+### Start the service
+
+After completing the migration, start the dev service:
+
+```bash
 pnpm dev
 ```
 

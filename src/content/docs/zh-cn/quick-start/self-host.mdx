@@ -37,6 +37,18 @@ Docker 模式会运行两个服务：
 
 <LinkCard title="初始化设置" description="打开 http://localhost:3690 进行初始化设置。" href="http://localhost:3690" />
 
+## 服务器部署
+
+如果你打算把 Maia 部署到**服务器**并给团队/公网访问，强烈建议通过 **HTTPS** 访问，而不是直接暴露 `http://<IP>:3690`。
+
+原因是：Maia 的登录态使用 Cookie session，默认会给 session Cookie 加 `Secure`；浏览器在 **HTTP** 下会拒绝保存/携带该 Cookie，于是会出现“登录接口 200，但刷新又回到登录页”的**登录循环**。
+
+解决方式是：在 Maia 前面加一层 **终止 TLS 的反向代理**（Nginx/Caddy/云负载均衡），让外部访问使用 HTTPS，代理到本机 `127.0.0.1:3690`。
+
+如果你明确只在内网使用并且要坚持纯 HTTP，也可以在 `.env.production` 里设置 `SESSION_COOKIE_SECURE=false`（不推荐公网）。
+
+详见：[反向代理与 HTTPS](/zh-cn/quick-start/reverse-proxy/)
+
 ## 获取更新
 
 当你使用 `docker-compose.release.yml`（预构建镜像）部署时，更新通常是“拉取新镜像 → 重建并重启”：
@@ -45,3 +57,28 @@ Docker 模式会运行两个服务：
 docker compose -f docker-compose.release.yml --env-file .env.production pull
 docker compose -f docker-compose.release.yml --env-file .env.production up -d --remove-orphans
 ```
+
+### 数据库迁移
+
+使用预构建镜像时，数据库迁移已包含在镜像中。当你拉取新镜像并重启容器时：
+
+1. **新镜像包含最新的迁移文件**
+2. **容器启动时自动检测并执行新迁移**
+3. **已应用的迁移会被跳过**
+
+整个过程无需手动干预，Maia 会自动处理数据库版本升级。
+
+<Aside type="tip" title="迁移安全性">
+Maia 的迁移器会检查 `_prisma_migrations` 表，确保每个迁移只执行一次。即使容器重启多次，也不会重复应用已完成的迁移。
+</Aside>
+
+### 验证迁移状态
+
+如果需要确认迁移是否成功应用，可以查看容器日志：
+
+```bash
+docker compose -f docker-compose.release.yml --env-file .env.production logs app
+```
+
+日志中会显示迁移执行的详细信息。
+

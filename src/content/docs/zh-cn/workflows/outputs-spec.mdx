@@ -1,0 +1,100 @@
+---
+title: 输出规范
+description: 定义稳定的运行输出契约，为下游系统提供可靠的数据接口。
+---
+
+import { Aside } from "@astrojs/starlight/components"
+
+输出规范允许你把**某个步骤的输出**映射成工作流对外发布的**稳定输出**。
+
+## 输出规范结构
+
+输出规范使用 JSON 格式定义：
+
+```json
+{
+  "version": 1,         /* 版本号目前固定为 1 */
+  "outputs": {
+    "summary": {        /* 对外输出名 */
+      "stepKey": "summarize",
+      "field": "text",  /* 可选：只取 outputs.text */
+      "title": "摘要",
+      "description": "用于展示的摘要文本"
+    }
+  }
+}
+```
+
+### `version`
+
+当前版本号，固定为 `1`。
+
+### `outputs`
+
+输出映射表：key 是**对外输出名**，value 是映射配置对象。
+
+每个输出支持字段：
+
+- `stepKey` - 来源步骤 key（必需）
+- `field` - 只取步骤输出中的某个字段（可选）
+- `title` - UI 展示标题（可选）
+- `description` - UI 说明（可选）
+
+## 映射规则
+
+### 输出来源
+
+输出规范读取的是步骤 `main(env, ctx)` 的返回值中的 `outputs`：
+
+```javascript
+return { outputs: { text: "hello", wordCount: 5 } };
+```
+
+### 设置 `field`
+
+输出值为该步骤的整个 `outputs` 对象。
+
+### 未设置 `field`
+
+输出值就是步骤的整个 `outputs[field]` 对象。
+
+<Aside type="note" title="什么时候是 null">
+如果来源步骤没有成功执行，或者 `field` 指向的字段不存在，对应输出值为 `null`。输出规范本身不会因此失效。
+</Aside>
+
+## 示例
+
+### 1. 发布整个 outputs
+
+```json
+{
+  "version": 1,
+  "outputs": {
+    "result": { "stepKey": "main" }
+  }
+}
+```
+
+### 2. 只发布一个字段
+
+```json
+{
+  "version": 1,
+  "outputs": {
+    "summaryText": { "stepKey": "summarize", "field": "text" }
+  }
+}
+```
+
+### 3. 从多个步骤聚合
+
+```json
+{
+  "version": 1,
+  "outputs": {
+    "items": { "stepKey": "extract", "field": "items" },
+    "itemCount": { "stepKey": "extract", "field": "count" },
+    "status": { "stepKey": "validate", "field": "status" }
+  }
+}
+```

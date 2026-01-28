@@ -1,31 +1,92 @@
 ---
 title: 架构与组件
-description: 控制面、执行面与隔离执行（Runner / Sandbox）怎么协作。
+description: 了解 Maia 的核心组件与运行机制。
 ---
 
-本页用“组件视角”解释 Maia 的运行方式，方便你在部署、排障、扩容时快速定位问题。
+Maia 由两部分组成：
 
-## 两个平面：控制面 vs 执行面
+- **App**：负责配置管理、状态持久化、调度与对外 API。
+- **Runner**：可选的执行器，用于隔离执行 step 与依赖安装；未配置 Runner 时由 App 本地执行。
 
-- **App（控制面）**
-  - Web UI
-  - 调度与状态机（scheduler/state machine）
-  - SQLite（状态与输出的持久化）
-  - 实时事件流（SSE：日志/事件/回放）
+## 组件
 
-- **Runner（执行面）**
-  - 负责启动/销毁 sandbox 容器
-  - 收集并流式回传 stdout/stderr 与执行事件
-  - 将执行产物（outputs/files/artifacts）落盘到数据目录
+### App
 
-## 为什么要拆成两个服务？
+- **HTTP API**：Workflow/Version 管理；创建 Job；查询 Run、日志、产物。
+- **MaiaEngine**：tick 循环驱动状态机（领取任务、创建 Run、下载输入、调度步骤、重试与终止）。
+- **数据库（SQLite / Prisma）**：单一事实源。Job/Run/Step/Attempt、日志事件、产物元数据落库。
+- **本地磁盘**：运行目录（run/attempt）、依赖缓存目录、产物文件与下载文件。
 
-- **安全与隔离**：把“不可信/高风险的执行”放在执行面，用容器隔离
-- **稳定性**：控制面负责“状态与编排”，不因为单次执行崩溃而丢状态
-- **扩展性**：执行压力主要在 Runner，可按需求独立扩容
+### Runner
 
-## 关键依赖与配置
+Runner 通过 HTTP 接口执行两类任务：
 
-- **`RUNNER_TOKEN`**：App 与 Runner 必须一致（否则 Runner 无法注册/授权）
-- **数据目录**：持久化 SQLite 与运行产物（见「部署与运维 → 数据目录与备份」）
-- **Sandbox 镜像**：Runner 需要能拉取或使用本地构建的 sandbox 镜像
+- **step 执行**：`/v1/exec/step`，输出为 NDJSON 日志流与退出事件。
+- **依赖安装**：`/v1/exec/deps`，输出为 NDJSON 日志流与退出事件。
+
+## 核心对象
+
+- **Workflow**：工作流定义（编辑态）。
+- **WorkflowVersion**：工作流版本。版本包含不可变的运行快照 `workflowSnap`。
+- **JobRun**：一次运行请求（手动触发、定时触发、批次 fanout 的结果）。
+- **Run**：引擎领取 `JobRun` 后创建的运行实例，绑定 `workflowSnap`。
+- **RunStep**：一次 `Run` 内的步骤节点，来自快照的 `steps`。
+- **Attempt**：某个 `RunStep` 的一次执行尝试。
+- **InputFile / InputBlob**：输入文件与内容存储。上传与 URL 文件均落在 `InputFile`；内容以 `InputBlob` 复用。
+- **Artifact**：步骤产物。系统产物包含 `input.json` 与 `output.json`；用户可注册额外文件。
+
+## 数据流
+
+### 创建 Job
+
+- App 接收 `inputJson` 与文件输入（URL 列表、上传文件）。
+- 若 workflow 配置了 `inputSpec`，App 使用 `inputSpec.paramsSchema` 校验参数，并按 JSON Schema `default` 自动填充缺省值。
+- App 写入 `JobRun`，并将文件写入 `InputFile`（上传对应 `InputBlob`）。
+
+### JobRun 变成 Run
+
+- `MaiaEngine` 在 tick 中领取 `QUEUED` 的 `JobRun`。
+- 引擎创建 `Run`，并绑定版本快照 `workflowSnap`。
+- 引擎按快照创建 `RunStep`（初始为 `PENDING`）。
+- 引擎生成 `Run.initialInput`：来自 `JobRun.inputJson`，并附加系统字段 `files`（由 `InputFile` 映射而来）。
+
+### 输入文件处理
+
+- 若存在 URL 输入文件，`Run` 先进入 `PENDING_INPUTS`。
+- 引擎下载 URL 文件，更新 `InputFile` 状态，并同步更新 `Run.initialInput.files` 中的 `status/path/sha256/mime` 等字段。
+- 所有输入就绪后，`Run` 进入 `RUNNING`。
+
+### 步骤调度与执行
+
+- 引擎按依赖关系选择可运行的 `RunStep`（`deps` 全部 `SUCCEEDED`）。
+- 对每个步骤创建 `Attempt`，并执行 step 脚本：
+  - **配置 Runner**：App 调用 Runner 执行，Runner 通过 NDJSON 流式回传日志与退出事件。
+  - **未配置 Runner**：App 通过 `child_process` 在本地执行。
+- step 执行完成后，引擎写入 `output.json`（统一封装为 `{ ok, timestamp, data }`），并将日志、状态与产物元数据落库。
+
+### 终止条件
+
+- 任一步骤失败：`Run` 进入 `FAILED`。
+- 用户取消：`Run` 进入 `CANCELED`。
+- 全部步骤成功：`Run` 进入 `SUCCEEDED`。
+
+## 实时机制
+
+App 将运行过程写入日志事件表，并通过 SSE 推送事件流。事件包括但不限于：
+
+- `run_status`
+- `step_status`
+- `log_line`
+- `input_file_status`
+- `artifact_created`
+
+## 注意事项
+
+- **环境变量**：step 执行使用白名单环境变量，仅注入工作流环境变量与 `MAIA_*` 上下文变量。
+- **保留键**：`files`、`upstream`、`urlFiles` 为系统保留键，禁止出现在 `inputSpec.paramsSchema` 与 `examples[].params` 中。
+
+## 相关主题
+
+- 输入规范：`inputSpec`
+- 输出规范：`outputsSpec`
+- 依赖管理：`dependencies`、`depsHash`

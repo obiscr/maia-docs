@@ -1,0 +1,52 @@
+---
+title: 环境变量
+description: 配置和管理工作流级环境变量，安全地传递配置信息和密钥。
+---
+
+import { Aside } from "@astrojs/starlight/components"
+
+环境变量用于保存工作流运行所需的**配置与密钥**，在步骤执行时注入到 `main(env, ctx)` 的 `env` 参数里。
+
+## 规则
+
+- 键规则
+  - 必须匹配 `^[A-Za-z_][A-Za-z0-9_]*$`
+  - 最大长度 128
+  - 不允许重复
+
+- 值规则
+  - 必须是字符串
+  - 最大长度 8192
+
+<Aside type="tip" title="命名建议">
+推荐使用全大写加下划线（例如 `API_TOKEN`），可读性更好。
+</Aside>
+
+## 平台保留与注入变量
+
+以 `MAIA_` 开头的键名由平台保留，**系统会自动忽略。**。
+
+平台会在执行时注入这些变量（只读）：
+
+- **执行标识**：`MAIA_RUN_ID`、`MAIA_STEP_KEY`、`MAIA_ATTEMPT_NO`
+- **路径信息**：`MAIA_INPUT_PATH`、`MAIA_OUTPUT_PATH`、`MAIA_RUN_DIR`、`MAIA_ATTEMPT_DIR`
+- **工作流信息**：`MAIA_WORKFLOW_ID`、`MAIA_WORKFLOW_DEPS_HASH`
+
+## 在步骤中使用
+
+```javascript
+export default {
+  async main(env, ctx) {
+    const apiBase = env.API_BASE;
+    const token = env.API_TOKEN;
+    const timeoutMs = env.TIMEOUT_MS ? parseInt(env.TIMEOUT_MS, 10) : 30_000;
+
+    const resp = await fetch(`${apiBase}/data`, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+
+    return { outputs: { data: await resp.json() } };
+  },
+};
+```

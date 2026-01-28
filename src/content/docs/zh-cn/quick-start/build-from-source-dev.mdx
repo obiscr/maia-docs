@@ -56,6 +56,27 @@ import { Aside, LinkCard, Steps } from "@astrojs/starlight/components"
 ```bash
 git pull
 pnpm install
+```
+
+### 更新数据库
+
+如果更新包含数据库迁移（新增或修改表结构），需要执行迁移命令：
+
+```bash
+pnpm prisma:migrate
+```
+
+该命令会应用 `prisma/migrations/` 目录下的新迁移文件。
+
+<Aside type="tip" title="自动迁移">
+Maia 在首次启动或检测到数据库未初始化时会自动执行迁移。但为了确保及时应用最新的数据库变更，建议在更新后手动执行迁移命令。
+</Aside>
+
+### 启动服务
+
+完成迁移后，启动开发服务：
+
+```bash
 pnpm dev
 ```
 

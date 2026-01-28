@@ -1,0 +1,396 @@
+---
+title: 输入规范
+description: 使用输入规范定义和验证工作流的运行输入，提升安全性和易用性。
+---
+
+import { Aside, Tabs, TabItem } from "@astrojs/starlight/components"
+
+输入规范允许你定义工作流接受的输入参数结构，系统会自动根据规范定义验证输入参数。
+
+## 输入规范结构
+
+输入规范使用 JSON 格式定义，包含以下核心字段：
+
+```json
+{
+  "version": 2,             /* 版本号目前固定为 2 */
+  "paramsSchema": { ... },  /* JSON Schema */
+  "filesInput": { ... },    /* 文件输入配置 */
+  "examples": [ ... ]       /* 示例输入 */
+}
+```
+
+### `version`
+
+当前版本号，固定为 `2`。这是推荐的输入规范格式版本。
+
+<Aside type="note" title="版本兼容性">
+系统会自动兼容旧版本格式，但新工作流建议只使用 v2。
+</Aside>
+
+### `paramsSchema`
+
+使用 JSON Schema 定义用户可编辑的参数结构。
+
+**关键属性：**
+
+- `type: "object"` - 参数必须是对象类型
+- `properties` - 定义各个参数字段
+- `required` - 声明必填字段
+- `additionalProperties: false` - 拒绝未声明的字段
+
+<Aside type="note" title="未声明字段">
+`additionalProperties` 为 `true` 时，允许工作流的输入参数包含未在 `properties` 中声明的字段。
+</Aside>
+
+**字段类型支持：**
+
+- `string` - 文本输入，支持 `minLength`、`maxLength`、`pattern`、`enum` 等约束
+- `integer` / `number` - 数值输入，支持 `minimum`、`maximum` 等约束
+- `boolean` - 开关控件
+- `array` - 数组类型，可嵌套其他类型
+- `object` - 嵌套对象
+
+### `filesInput`
+
+文件输入配置，包含两种输入方式：
+
+#### `urlFiles`
+
+允许用户提供文件 URL 列表，系统会自动下载并提供给工作流。
+
+```json
+{
+  "urlFiles": {
+    "title": "URL 文件",
+    "description": "每行一个 URL",
+    "enabled": true,
+    "required": false,
+    "maxItems": 50
+  }
+}
+```
+
+**配置项：**
+
+- `enabled` - 是否启用，默认 `true`
+- `required` - 是否必填，默认 `false`
+- `maxItems` - 最大文件数量
+- `title` - UI 显示标题
+- `description` - UI 说明文字
+
+#### `uploadFiles`
+
+允许用户从本地上传文件。
+
+```json
+{
+  "uploadFiles": {
+    "title": "上传文件",
+    "description": "支持 PDF 和图片",
+    "enabled": true,
+    "required": false,
+    "maxItems": 10,
+    "acceptMime": ["application/pdf", "image/png"]
+  }
+}
+```
+
+**配置项：**
+
+- `enabled` - 是否启用，默认 `true`
+- `required` - 是否必填，默认 `false`
+- `maxItems` - 最大文件数量
+- `acceptMime` - 允许的 MIME 类型列表（浏览器层面的提示，非强制验证）
+- `title` - UI 显示标题
+- `description` - UI 说明文字
+
+### `examples`
+
+示例输入用于 UI 预填和用户引导。**强烈建议为输入规范配置示例**。
+
+```json
+{
+  "examples": [
+    {
+      "name": "默认搜索",
+      "params": { "query": "Maia", "limit": 10 }
+    },
+    {
+      "name": "深度搜索",
+      "params": { "query": "workflow automation", "limit": 50 }
+    }
+  ]
+}
+```
+
+**示例字段：**
+
+- `name` - 示例名称
+- `params` - 示例参数值
+- `urlFiles` - 示例 URL 文件列表（可选）
+- `uploadNotes` - 上传文件的提示说明（可选）
+
+<Aside type="tip" title="UI 预填规则">
+UI 通常会自动预填第一个示例（`examples[0]`），建议将最常用的场景放在首位。
+</Aside>
+
+## 输入验证机制
+
+### 验证时机
+
+系统会在以下情况下验证输入：
+
+- 创建任务时
+- 创建/更新调度规则时
+- 更新批次时
+
+如果输入参数不符合规范，操作会被拒绝。
+
+### 保留键约束
+
+以下顶层键名由系统保留，**不允许**在输入规范中使用：
+
+- `files` - 系统管理的文件元数据
+- `upstream` - 上游步骤输出
+- `urlFiles` - 系统内部使用
+
+如果在 `paramsSchema.properties` 或 `examples[].params` 中使用保留键，系统会自动拒绝该输入。
+
+<Aside type="caution" title="为什么保留这些键">
+这些键用于传递系统信息和文件元数据，不属于用户参数空间。将它们包含在参数定义中会导致命名冲突和安全问题。
+</Aside>
+
+## 完整示例
+
+### 1. 纯参数输入
+适用于不需要文件输入的工作流，例如 API 调用、数据查询等。
+
+<Tabs>
+<TabItem label="输入规范">
+```json
+{
+  "version": 2,
+  "paramsSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "query": { 
+        "type": "string", 
+        "title": "查询关键词", 
+        "minLength": 1 
+      },
+      "limit": { 
+        "type": "integer", 
+        "title": "结果数量", 
+        "minimum": 1, 
+        "maximum": 100, 
+        "default": 10 
+      },
+      "sort": {
+        "type": "string",
+        "title": "排序方式",
+        "enum": ["relevance", "date"],
+        "default": "relevance"
+      }
+    },
+    "required": ["query"]
+  },
+  "examples": [
+    { 
+      "name": "默认", 
+      "params": { "query": "Maia", "limit": 10, "sort": "relevance" } 
+    }
+  ]
+}
+```
+</TabItem>
+<TabItem label="步骤代码">
+```js
+export default {
+  async main(env, ctx) {
+    const { params } = ctx;
+
+    // 从上下文拿到输入的参数
+    const query = String(params.query ?? "").trim();
+    const limit = Number(params.limit ?? 10);
+    const sort = params.sort === "date" ? "date" : "relevance";
+
+    ctx.log("[inputs]", { query, limit, sort });
+
+    // 输出参数到下游
+    return {
+      outputs: {
+        query,
+        limit,
+        sort,
+      },
+    };
+  },
+};
+```
+</TabItem>
+</Tabs>
+
+
+
+### 2. 参数加文件上传
+
+适用于需要处理本地文件的工作流，例如文档分析、图片处理等。
+
+<Tabs>
+<TabItem label="输入规范">
+
+```json
+{
+  "version": 2,
+  "paramsSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "extractImages": { 
+        "type": "boolean", 
+        "title": "提取图片", 
+        "default": false 
+      }
+    }
+  },
+  "filesInput": {
+    "urlFiles": { "enabled": false },
+    "uploadFiles": {
+      "title": "上传文档",
+      "description": "支持 PDF 和 Word 文档，最多 5 个",
+      "enabled": true,
+      "required": true,
+      "maxItems": 5,
+      "acceptMime": ["application/pdf", "application/msword"]
+    }
+  },
+  "examples": [
+    { 
+      "name": "基础提取", 
+      "params": { "extractImages": false },
+      "uploadNotes": "上传需要分析的文档"
+    }
+  ]
+}
+```
+</TabItem>
+<TabItem label="步骤代码">
+
+```js
+import path from "node:path";
+
+export default {
+  async main(env, ctx) {
+    const { params, files } = ctx;
+
+    const extractImages = Boolean(params.extractImages ?? false);
+
+    // 注意：files 是系统保留键（不允许在 paramsSchema 里声明），但运行时系统会把输入文件写入 params.files
+    const all = Array.isArray(params.files) ? params.files : [];
+    const uploads = all.filter(
+      (f) => f && f.source === "upload" && f.status === "ready" && typeof f.path === "string",
+    );
+
+    // 需要访问文件内容时：absPath = runDir + runRelativePath
+    const runDir = String(files?.dirs?.runDir ?? "");
+    const uploadAbsPaths = uploads.map((f) => path.join(runDir, f.path));
+
+    ctx.log("[inputs]", { extractImages, uploadCount: uploads.length });
+
+    return {
+      outputs: {
+        extractImages,
+        upload_files: uploads.map((f) => ({ id: f.id, name: f.name, path: f.path })),
+        upload_abs_paths: uploadAbsPaths,
+      },
+    };
+  },
+};
+```
+</TabItem>
+</Tabs>
+
+### 3. URL 批量处理
+
+适用于批量处理网络资源的工作流，例如网页抓取、链接检查等。
+
+<Tabs>
+<TabItem label="输入规范">
+```json
+{
+  "version": 2,
+  "paramsSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "timeout": { 
+        "type": "integer", 
+        "title": "请求超时（秒）", 
+        "minimum": 1, 
+        "maximum": 300, 
+        "default": 30 
+      }
+    }
+  },
+  "filesInput": {
+    "uploadFiles": { "enabled": false },
+    "urlFiles": {
+      "title": "URL 列表",
+      "description": "每行一个 URL，最多 100 个",
+      "enabled": true,
+      "required": true,
+      "maxItems": 100
+    }
+  },
+  "examples": [
+    { 
+      "name": "链接检查", 
+      "params": { "timeout": 30 },
+      "urlFiles": [
+        { "url": "https://example.com/page1" },
+        { "url": "https://example.com/page2" }
+      ]
+    }
+  ]
+}
+```
+</TabItem>
+<TabItem label="步骤代码">
+```js
+import path from "node:path";
+
+export default {
+  async main(env, ctx) {
+    const { params, files } = ctx;
+
+    const timeout = Number(params.timeout ?? 30);
+
+    // URL 列表也会被系统写入 params.files（source: "url"）
+    const all = Array.isArray(params.files) ? params.files : [];
+    const urlFiles = all.filter((f) => f && f.source === "url");
+
+    // 当 run 进入 RUNNING 后，URL 文件通常已下载完成并带有 path
+    const runDir = String(files?.dirs?.runDir ?? "");
+    const ready = urlFiles.filter((f) => f.status === "ready" && typeof f.path === "string");
+    const targets = ready.map((f) => ({
+      id: f.id,
+      name: f.name,
+      url: f.url,
+      absPath: path.join(runDir, f.path),
+    }));
+
+    ctx.log("[inputs]", { timeout, urlCount: targets.length });
+
+    return {
+      outputs: {
+        timeout,
+        targets,
+      },
+    };
+  },
+};
+```
+</TabItem>
+</Tabs>

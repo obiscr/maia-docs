@@ -1,0 +1,100 @@
+---
+title: Output spec
+description: Define a stable output contract for the workflow, providing a reliable data interface for downstream systems.
+---
+
+import { Aside } from "@astrojs/starlight/components"
+
+The output spec allows you to map the output of a **specific step** to the **stable output** published by the workflow.
+
+## Output spec structure
+
+The output spec uses JSON format to define:
+
+```json
+{
+  "version": 1,         /* The version number is currently fixed to 1 */
+  "outputs": {
+    "summary": {        /* The output name for external use */
+      "stepKey": "summarize",
+      "field": "text",  /* Optional: only take outputs.text */
+      "title": "Summary",
+      "description": "Summary text for display"
+    }
+  }
+}
+```
+
+### `version`
+
+The current version number, fixed to `1`.
+
+### `outputs`
+
+Output mapping table: the key is the **output name for external use**, and the value is the mapping configuration object.
+
+Each output supports the following fields:
+
+- `stepKey` - The source step key (required)
+- `field` - Only take a field from the step output (optional)
+- `title` - UI display title (optional)
+- `description` - UI description (optional)
+
+## Mapping rules
+
+### Output source
+
+The output spec reads the `outputs` in the return value of the step `main(env, ctx)`:
+
+```javascript
+return { outputs: { text: "hello", wordCount: 5 } };
+```
+
+### Set `field`
+
+The output value is the entire `outputs` object of the step.
+
+### Unset `field`
+
+The output value is the entire `outputs[field]` object of the step.
+
+<Aside type="note" title="When is null">
+If the source step did not execute successfully, or the field pointed to by `field` does not exist, the corresponding output value is `null`. The output spec itself will not be invalidated.
+</Aside>
+
+## Examples
+
+### 1. Publish the entire outputs
+
+```json
+{
+  "version": 1,
+  "outputs": {
+    "result": { "stepKey": "main" }
+  }
+}
+```
+
+### 2. Publish only one field
+
+```json
+{
+  "version": 1,
+  "outputs": {
+    "summaryText": { "stepKey": "summarize", "field": "text" }
+  }
+}
+```
+
+### 3. Aggregate from multiple steps
+
+```json
+{
+  "version": 1,
+  "outputs": {
+    "items": { "stepKey": "extract", "field": "items" },
+    "itemCount": { "stepKey": "extract", "field": "count" },
+    "status": { "stepKey": "validate", "field": "status" }
+  }
+}
+```

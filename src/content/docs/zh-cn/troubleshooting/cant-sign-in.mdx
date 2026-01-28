@@ -1,0 +1,55 @@
+---
+title: 无法登录（登录循环）
+description: 登录接口返回 200，但页面仍然停留在登录页或不断跳回登录页。
+---
+
+这类问题最常见的原因是：**浏览器没有成功保存登录会话**，导致后续请求始终是**未登录**状态。
+
+典型表现：
+
+- 登录请求返回 **200 OK**
+- 但刷新后又回到 `/signin`（或不断经过 `/auth/redirect` 回到登录页）
+- 后端日志看起来都正常，但就是**登录不进去**
+
+## 为什么会这样
+
+Maia 使用 **Cookie session** 保存登录态。如果 session cookie 带了 `Secure`，浏览器就会要求：**只能在 HTTPS 下保存/携带该 Cookie**。
+
+你用明文 HTTP 访问（例如 `http://<IP>:3690`）时，浏览器可能会拒绝保存该 Cookie，于是就会出现**登录成功但立刻又回到登录页**的登录循环。
+
+## 解决方式
+
+Maia 提供了一个环境变量开关：
+
+- `SESSION_COOKIE_SECURE=true|false|auto`
+
+推荐配置：
+
+- **对外 HTTPS（反向代理 / 负载均衡）**：设置 `SESSION_COOKIE_SECURE=auto`
+- **明确只在内网且坚持纯 HTTP**：设置 `SESSION_COOKIE_SECURE=false`（**不推荐公网**）
+
+### 配置环境变量
+
+在 `.env.production` 文件中添加 `SESSION_COOKIE_SECURE=auto`：
+
+```dotenv title=".env.production" ins={1}
+SESSION_COOKIE_SECURE=auto
+```
+
+### 重建容器
+
+仅仅在 `.env.production` 里写了 `SESSION_COOKIE_SECURE=...` 不一定会自动注入到容器。你需要确保 `docker-compose*.yml` 通过 `environment:` 或 `env_file:` 把它传进 `maia` 服务。
+
+如果你是从源码构建镜像：
+
+```bash
+docker compose --env-file .env.production up -d --build --force-recreate
+```
+
+如果你使用的是 release 版 compose 文件：
+
+```bash
+docker compose -f docker-compose.release.yml --env-file .env.production up -d --force-recreate
+```
+
+如果一切正常，你应该能够成功登录，并且不会出现登录循环。

@@ -3,6 +3,7 @@ import { defineConfig } from "astro/config"
 import starlight from "@astrojs/starlight"
 import starlightLinksValidator from "starlight-links-validator"
 import markdocGrammar from "./grammars/markdoc.tmLanguage.json"
+import rehypeMermaid from "rehype-mermaid"
 
 export const locales = {
   root: { label: "English", lang: "en" },
@@ -20,6 +21,9 @@ const ogImageAlt = "Maia Docs"
 export default defineConfig({
   site,
   trailingSlash: "ignore",
+  markdown: {
+    rehypePlugins: [rehypeMermaid],
+  },
   integrations: [
     starlight({
       title: "Maia Docs",
@@ -45,14 +49,14 @@ export default defineConfig({
           attrs: { property: "og:image:alt", content: ogImageAlt },
         },
       ],
-      customCss: ["./src/assets/landing.css"],
+      customCss: ["./src/assets/landing.css", "./src/assets/mermaid.css"],
       locales,
       sidebar: [
         {
           label: "Overview",
           translations: { "zh-CN": "概览" },
           items: [
-            { label: "What is Maia?", slug: "overview/what-is-maia", translations: { "zh-CN": "Maia 是什么？" } },
+            { label: "Why Maia?", slug: "overview/why-maia", translations: { "zh-CN": "为什么是 Maia？" } },
             { label: "Architecture", slug: "overview/architecture", translations: { "zh-CN": "架构与组件" } },
           ],
         },
@@ -85,12 +89,36 @@ export default defineConfig({
               slug: "quick-start/build-from-source-docker",
               translations: { "zh-CN": "本地 Docker 运行" },
             },
+            {
+              label: "Reverse proxy & HTTPS",
+              slug: "quick-start/reverse-proxy",
+              translations: { "zh-CN": "反向代理与 HTTPS" },
+            },
           ],
         },
         {
-          label: "More (coming soon)",
-          slug: "coming-soon",
-          translations: { "zh-CN": "更多内容（敬请期待）" },
+          label: "Workflows",
+          translations: { "zh-CN": "工作流" },
+          items: [
+            { label: "Editor", slug: "workflows/editor", translations: { "zh-CN": "编辑器" } },
+            { label: "Input spec", slug: "workflows/input-spec", translations: { "zh-CN": "输入规范" } },
+            { label: "Outputs spec", slug: "workflows/outputs-spec", translations: { "zh-CN": "输出规范" } },
+            { label: "Environment variables", slug: "workflows/environment", translations: { "zh-CN": "环境变量" } },
+            { label: "Dependency", slug: "workflows/dependencies", translations: { "zh-CN": "依赖管理" } },
+            { label: "Versioning & restore", slug: "workflows/versioning", translations: { "zh-CN": "版本与还原" } },
+            { label: "Import & export", slug: "workflows/import-export", translations: { "zh-CN": "导入与导出" } },
+          ],
+        },
+        {
+          label: "Troubleshooting",
+          translations: { "zh-CN": "故障排除" },
+          items: [
+            {
+              label: "Can't sign in (login loop)",
+              slug: "troubleshooting/cant-sign-in",
+              translations: { "zh-CN": "无法登录（登录循环）" },
+            },
+          ],
         },
       ],
       expressiveCode: { shiki: { langs: [markdocGrammar] } },

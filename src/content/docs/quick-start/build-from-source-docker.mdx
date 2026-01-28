@@ -66,6 +66,16 @@ Then open:
 
 <LinkCard title="Open Maia" description="Docker default port: http://localhost:3690" href="http://localhost:3690" target="_blank" />
 
+### LAN access
+
+If you deploy Maia on a server and access it over plain HTTP (for example `http://<IP>:3690`), you may hit a **login loop** because the browser won’t persist `Secure` session cookies on HTTP.
+
+Recommended: put Maia behind an **HTTPS** reverse proxy and set `SESSION_COOKIE_SECURE=auto`. If you intentionally run **HTTP only** on a trusted LAN, set `SESSION_COOKIE_SECURE=false` (not recommended for public access).
+
+See:
+- [Reverse Proxy & HTTPS](./reverse-proxy/)
+- [Can't sign in (login loop)](../troubleshooting/cant-sign-in/)
+
 ## Data storage location
 
 In Docker mode, data is stored in Docker named volume by default. If you want to store it on the host machine, you can set:
@@ -103,5 +113,23 @@ When `maia` source code has updates, run the following commands in the source co
 
 ```bash
 git pull
-docker compose --env-file .env.production up -d --build
+docker compose --env-file .env.production up -d --build --force-recreate
+```
+
+### Database migration
+
+Maia containers automatically detect and apply new database migrations on startup. The update process:
+
+1. Pull the latest code (including new migration files)
+2. Rebuild the image (package new migration files into the image)
+3. Automatically apply new migrations when the container restarts
+
+<Aside type="note" title="Migration mechanism">
+Maia uses a built-in migrator to read the `prisma/migrations/` directory and tracks applied migrations via the `_prisma_migrations` table. When restarting the container, it automatically executes migrations that haven't been applied yet.
+</Aside>
+
+If you need to manually trigger migrations (e.g., for debugging), you can enter the container and execute:
+
+```bash
+docker compose --env-file .env.production exec app pnpm prisma:migrate
 ```

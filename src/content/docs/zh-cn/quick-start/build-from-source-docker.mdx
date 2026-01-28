@@ -66,6 +66,17 @@ import { Aside, LinkCard, Steps, Tabs, TabItem } from "@astrojs/starlight/compon
 
 <LinkCard title="打开 Maia" description="Docker 默认端口：http://localhost:3690" href="http://localhost:3690" target="_blank" />
 
+### 内网访问
+
+如果你把 Maia 部署到服务器，并用明文 HTTP 访问（例如 `http://<IP>:3690`），可能会遇到**登录循环**：浏览器在 HTTP 下不会保存/携带带有 `Secure` 的登录会话 Cookie。
+
+推荐做法：在 Maia 前面加一层 **HTTPS 反向代理**，并设置 `SESSION_COOKIE_SECURE=auto`。如果你明确只在可信内网并坚持纯 HTTP，可以设置 `SESSION_COOKIE_SECURE=false`（不推荐公网）。
+
+可以参考：
+
+- [反向代理与 HTTPS](/zh-cn/quick-start/reverse-proxy/)
+- [无法登录（登录循环）](/zh-cn/troubleshooting/cant-sign-in/)
+
 ## 数据存储位置
 
 Docker模式下，数据默认存储在 Docker named volume。如果你希望落到宿主机目录，可设置：
@@ -103,5 +114,23 @@ MAIA_HOST_DATA_DIR=/absolute/path/on/host
 
 ```bash
 git pull
-docker compose --env-file .env.production up -d --build
+docker compose --env-file .env.production up -d --build --force-recreate
+```
+
+### 数据库迁移
+
+Maia 容器在启动时会自动检测并执行新的数据库迁移。更新流程会：
+
+1. 拉取最新代码（包含新的迁移文件）
+2. 重新构建镜像（将新迁移文件打包到镜像中）
+3. 重启容器时自动应用新迁移
+
+<Aside type="note" title="迁移机制">
+Maia 使用内置的迁移器读取 `prisma/migrations/` 目录，并通过 `_prisma_migrations` 表跟踪已应用的迁移。重启容器时会自动执行尚未应用的迁移。
+</Aside>
+
+如果需要手动触发迁移（例如调试），可以进入容器执行：
+
+```bash
+docker compose --env-file .env.production exec app pnpm prisma:migrate
 ```

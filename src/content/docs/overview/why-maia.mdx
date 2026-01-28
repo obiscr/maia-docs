@@ -1,0 +1,45 @@
+---
+title: Why Maia?
+description: A self-hosted workflow orchestration and execution service.
+---
+
+import { LinkCard } from "@astrojs/starlight/components"
+
+Maia is a self-hosted workflow orchestration and execution service. It uses a `DAG` structure and is designed for long-running automation.
+
+![Run preview](/src/assets/intro/runs-preview-1.png)
+
+## Core capabilities
+
+- **Persistence**: keep state, inputs, outputs, logs, and artifacts over time.
+- **Observability**: stream real-time logs and events via `SSE`; inspect step inputs, outputs, and artifacts.
+- **Replay**: replay an execution after it finishes.
+- **Isolated execution**: optionally execute with Runner (recommended for production); otherwise App executes locally.
+- **Composability**: explicit step dependencies; upstream outputs flow downstream by stepKey; supports input and output specs.
+
+## Use cases
+
+- **Data pipelines**: fetch, clean, transform, and aggregate; resume from failures.
+- **Scheduled jobs**: backups, health checks, and report generation; needs stable scheduling and traceability.
+- **API orchestration**: coordinate multiple APIs and aggregate results; needs a debuggable history.
+- **Batch processing**: process many files/records with concurrency control and progress visibility.
+
+## Quickstart
+
+<LinkCard 
+  title="Self-hosting" 
+  description="Deploy Maia quickly with Docker Compose." 
+  href="/quick-start/self-host/" 
+/>
+
+<LinkCard 
+  title="Your first workflow" 
+  description="Create and run your first workflow." 
+  href="/quick-start/first-workflow/" 
+/>
+
+## Related topics
+
+- Debugging and replay: `Run`, `RunStep`, `Attempt`
+- Input spec: `inputSpec`
+- Output spec: `outputsSpec`

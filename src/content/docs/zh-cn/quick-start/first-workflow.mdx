@@ -5,43 +5,37 @@ description: 运行第一个工作流，并查看日志与输出。
 
 import { Aside, LinkCard ,Steps } from "@astrojs/starlight/components"
 
-这篇会带你做两件事：
+我们将完成两个目标：
 
-- **先跑通一次**：从模板导入一个工作流 → 创建任务 → 入队运行 → 查看日志与产物
+- **先完成一次端到端验证**：从模板导入一个工作流 → 创建任务 → 入队运行 → 查看日志与产物
 - **再自己建一个**：新建工作流 + 步骤 → 写一段最小代码 → 运行验证
-
-这里有几个概念先对齐一下。你不需要完全理解，跟着做就能跑通：
-
-- **工作流**：一套步骤的定义
-- **任务**：基于某个工作流创建的一次“可重复运行”的任务配置
-- **运行**：任务的一次实际执行。每次入队都会产生一个新的运行。
 
 ## 运行模板工作流
 
-完成上一步初始化设置后进入 App，你会看到一些默认的工作流模板。本节的目标是：**导入任意一个模板并成功跑出一次运行结果**。
+完成上一步初始化设置后进入 App，你会看到一些默认的工作流模板。本节的目标是：**导入任意一个模板并成功得到一次运行结果**。
 
 在模板列表里任意选择一个模板，点击 **导入**。
 
-![导入工作流模板](~/assets/tutorial/zh-cn/import-first-workflow.png)
+![导入工作流模板](/src/assets/tutorial/zh-cn/import-first-workflow.png)
 
 导入完成后，点击右上角的 **创建任务**。
 
-![创建任务](~/assets/tutorial/zh-cn/first-create-job.png)
+![创建任务](/src/assets/tutorial/zh-cn/first-create-job.png)
 
 在创建任务页面，点击底部的 **立即入队**。
 
-![立即入队](~/assets/tutorial/zh-cn/first-enqueue.png)
+![立即入队](/src/assets/tutorial/zh-cn/first-enqueue.png)
 
-这会创建一个运行。你通常会看到一张 **运行状态** 卡片，表示当前运行正在执行或已完成。
+这会创建一个 Job 并入队。引擎开始执行后会创建一个 Run（通常几秒内）。你通常会看到一张 **运行状态** 卡片，表示当前运行正在执行或已完成。
 
-![运行状态](~/assets/tutorial/zh-cn/first-run.png)
+![运行状态](/src/assets/tutorial/zh-cn/first-run.png)
 
 点击 **运行状态** 卡片，进入运行详情页。这里你可以：
 
-- **查看日志**：确认这次运行确实执行了。这是“跑通”的最直观证据。
+- **查看日志**：确认这次运行确实执行了。这是完成端到端验证的最直观证据。
 - **查看输出/产物**：如果工作流有产物，会在这里提供下载入口
 
-![运行详情](~/assets/tutorial/zh-cn/run-result.png)
+![运行详情](/src/assets/tutorial/zh-cn/run-result.png)
 
 ## 新建工作流
 
@@ -49,11 +43,11 @@ import { Aside, LinkCard ,Steps } from "@astrojs/starlight/components"
 
 在左侧菜单栏选择 `工作流`，点击右上角的 **新建**。输入 **工作流名称** 与 **描述**。描述可以留空。然后点击 **创建**。
 
-![创建工作流步骤](~/assets/tutorial/zh-cn/create-workflow-step.png)
+![创建工作流步骤](/src/assets/tutorial/zh-cn/create-workflow-step.png)
 
 #### 编辑代码
 
-![编辑步骤](~/assets/tutorial/zh-cn/edit-step.png)
+![编辑步骤](/src/assets/tutorial/zh-cn/edit-step.png)
 
 选择刚创建的步骤进入编辑区，输入下方代码并保存，然后点击右上角的 **创建任务**。
 
@@ -75,9 +69,4 @@ export default {
 };
 ```
 
-在创建任务页面点击 **立即入队**，你会得到一次新的运行。进入运行详情页后，在日志里搜索 `Hello world!`，确认这段代码确实执行到了。
-
-<Aside type="note" title="如果你没看到运行卡片/日志">
-通常是页面没有刷新或运行还在排队。你可以稍等几秒，或返回列表再进入运行详情页重新查看。
-</Aside>
-
+在创建任务页面点击 **立即入队**，你会得到一次新的运行。进入运行详情页后，右击步骤选择 `查看日志`，确认日志里出现了 `Hello world!`。

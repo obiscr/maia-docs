@@ -1,0 +1,23 @@
+:root {
+  /* Default (dark theme in Starlight): medium gray for good contrast on dark bg */
+  --maia-mermaid-line: var(--sl-color-gray-1);
+}
+
+:root[data-theme="light"] {
+  /* Light theme needs slightly darker lines for readability */
+  --maia-mermaid-line: var(--sl-color-gray-1);
+}
+
+/* Mermaid v10 flowcharts: edges are usually `.flowchart-link` */
+:root svg[id^="mermaid-"] .flowchart-link,
+:root svg[id^="mermaid-"] .edgePath .path {
+  stroke: var(--maia-mermaid-line) !important;
+}
+
+/* Arrowheads / markers */
+:root svg[id^="mermaid-"] .arrowheadPath,
+:root svg[id^="mermaid-"] .arrowMarkerPath,
+:root svg[id^="mermaid-"] marker path {
+  fill: var(--maia-mermaid-line) !important;
+  stroke: var(--maia-mermaid-line) !important;
+}

@@ -1,31 +1,98 @@
 ---
 title: Architecture & components
-description: How the control plane, execution plane, and isolated execution (Runner/Sandbox) work together.
+description: Understand Maia’s core components and runtime model.
 ---
 
-This page explains how Maia works from a “components view” so you can quickly pinpoint issues when deploying, troubleshooting, or scaling.
+This page describes Maia’s core components, responsibility boundaries, and the end-to-end lifecycle of a single run.
 
-## Two planes: control vs execution
+## Overview
 
-- **App (control plane)**
-  - Web UI
-  - Scheduler & state machine
-  - SQLite (persistence for state & outputs)
-  - Real-time event stream (SSE: logs/events/replay)
+Maia consists of two parts:
 
-- **Runner (execution plane)**
-  - Starts/stops sandbox containers
-  - Collects and streams back stdout/stderr and execution events
-  - Persists execution artifacts (outputs/files/artifacts) to the data directory
+- **App**: configuration management, state persistence, scheduling, and public APIs.
+- **Runner**: an optional executor used for isolated step execution and dependency installation; if Runner is not configured, App executes locally.
 
-## Why split into two services?
+## Components
 
-- **Security & isolation**: keep “untrusted/high-risk execution” on the execution plane, isolated by containers
-- **Stability**: the control plane owns “state & orchestration” so you don’t lose state when a single run crashes
-- **Scalability**: most execution load sits on Runner, which can be scaled independently as needed
+### App
 
-## Key dependencies & configuration
+- **HTTP API**: manage Workflow/Version; create jobs; query runs, logs, and artifacts.
+- **MaiaEngine**: a tick-loop driven state machine (claim jobs, create runs, download inputs, schedule steps, retry, and terminate).
+- **Database (SQLite / Prisma)**: the single source of truth. Job/Run/Step/Attempt, log events, and artifact metadata are persisted here.
+- **Local disk**: run directories (run/attempt), dependency cache directories, artifact files, and downloaded files.
 
-- **`RUNNER_TOKEN`**: must match between App and Runner (otherwise Runner can’t register/authenticate)
-- **Data directory**: persists SQLite and run artifacts (see “Deployment & operations → Data directory & backups”)
-- **Sandbox image**: Runner must be able to pull it, or use a locally built sandbox image
+### Runner
+
+Runner exposes two HTTP endpoints:
+
+- **Step execution**: `/v1/exec/step`, streaming NDJSON logs plus an exit event.
+- **Dependency installation**: `/v1/exec/deps`, streaming NDJSON logs plus an exit event.
+
+Runner uses Bearer Token authentication via `RUNNER_TOKEN`.
+
+## Core objects
+
+- **Workflow**: the workflow definition (editable).
+- **WorkflowVersion**: a workflow version. Each version contains an immutable runtime snapshot `workflowSnap`.
+- **JobRun**: a run request (manual trigger, scheduled trigger, or the result of a batch fanout).
+- **Run**: the runtime instance created after the engine claims a `JobRun`, bound to `workflowSnap`.
+- **RunStep**: a step node within a `Run`, derived from the snapshot’s `steps`.
+- **Attempt**: a single execution attempt for a `RunStep`.
+- **InputFile / InputBlob**: input files and content storage. Both uploads and URL inputs are stored as `InputFile`; content is deduplicated via `InputBlob`.
+- **Artifact**: step outputs. System artifacts include `input.json` and `output.json`; users can register additional files.
+
+## Data flow
+
+### Create a job
+
+- App receives `inputJson` and file inputs (URL list and uploaded files).
+- If the workflow configures `inputSpec`, App validates params using `inputSpec.paramsSchema` and applies JSON Schema `default` values.
+- App writes `JobRun` and stores files as `InputFile` (uploads map to `InputBlob`).
+
+### Convert JobRun to Run
+
+- `MaiaEngine` claims `QUEUED` `JobRun` items during its tick loop.
+- The engine creates a `Run` bound to the version snapshot `workflowSnap`.
+- The engine creates `RunStep` records from the snapshot (initial status `PENDING`).
+- The engine builds `Run.initialInput` from `JobRun.inputJson` and attaches the system field `files` (mapped from `InputFile`).
+
+### Input file handling
+
+- If URL inputs exist, the `Run` enters `PENDING_INPUTS` first.
+- The engine downloads URL files, updates `InputFile` state, and mirrors `status/path/sha256/mime` into `Run.initialInput.files`.
+- Once all inputs are ready, the `Run` enters `RUNNING`.
+
+### Step scheduling and execution
+
+- The engine selects runnable `RunStep` items by dependency (`deps` all `SUCCEEDED`).
+- For each step, the engine creates an `Attempt` and executes the step script:
+  - **Runner configured**: App invokes Runner; Runner streams NDJSON logs and an exit event.
+  - **Runner not configured**: App executes locally via `child_process`.
+- After the step finishes, the engine writes `output.json` (wrapped as `{ ok, timestamp, data }`) and persists logs, statuses, and artifact metadata.
+
+### Termination conditions
+
+- Any step fails: `Run` becomes `FAILED`.
+- User cancels: `Run` becomes `CANCELED`.
+- All steps succeed: `Run` becomes `SUCCEEDED`.
+
+## Realtime
+
+App persists runtime events in the log event table and pushes an SSE event stream. Events include (but are not limited to):
+
+- `run_status`
+- `step_status`
+- `log_line`
+- `input_file_status`
+- `artifact_created`
+
+## Notes
+
+- **Environment variables**: step execution uses an allowlist; only workflow env vars and `MAIA_*` context vars are injected.
+- **Reserved keys**: `files`, `upstream`, and `urlFiles` are reserved and must not appear in `inputSpec.paramsSchema` or `examples[].params`.
+
+## Related topics
+
+- Input spec: `inputSpec`
+- Output spec: `outputsSpec`
+- Dependency management: `dependencies`, `depsHash`

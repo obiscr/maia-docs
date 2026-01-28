@@ -1,0 +1,396 @@
+---
+title: Input spec
+description: Use the input spec to define and validate the input of a workflow, improve security and usability.
+---
+
+import { Aside, Tabs, TabItem } from "@astrojs/starlight/components"
+
+The input spec allows you to define the input parameter structure accepted by the workflow, and the system will automatically validate the input parameters according to the spec.
+
+## Input spec schema
+
+The input spec uses JSON format to define, containing the following core fields:
+
+```json
+{
+  "version": 2,             /* The version number is currently fixed to 2 */
+  "paramsSchema": { ... },  /* JSON Schema */
+  "filesInput": { ... },    /* File input configuration */
+  "examples": [ ... ]       /* Example input */
+}
+```
+
+### `version`
+
+The current version number, fixed to `2`. This is the recommended version of the input spec format.
+
+<Aside type="note" title="Version compatibility">
+The system will automatically compatible with the old version format, but new workflows are recommended to only use v2.
+</Aside>
+
+### `paramsSchema`
+
+Use JSON Schema to define the user-editable parameter structure.
+
+**Key properties:**
+
+- `type: "object"` - The parameter must be an object type
+- `properties` - Define the fields of each parameter
+- `required` - Declare the required fields
+- `additionalProperties: false` - Reject the fields that are not declared
+
+<Aside type="note" title="Undeclared fields">
+`additionalProperties` is `true` when allowing the input parameters of the workflow to include fields that are not declared in `properties`.
+</Aside>
+
+**Field type support:**
+
+- `string` - Text input, supports `minLength`、`maxLength`、`pattern`、`enum` etc.
+- `integer` / `number` - Numerical input, supports `minimum`、`maximum` etc.
+- `boolean` - Switch control
+- `array` - Array type, can nest other types
+- `object` - Nested object
+
+### `filesInput`
+
+The file input configuration, containing two input methods:
+
+#### `urlFiles`
+
+Allow users to provide a list of file URLs, and the system will automatically download and provide to the workflow.
+
+```json
+{
+  "urlFiles": {
+    "title": "URL Files",
+    "description": "One URL per line",
+    "enabled": true,
+    "required": false,
+    "maxItems": 50
+  }
+}
+```
+
+**Configuration items:**
+
+- `enabled` - Whether to enable, default `true`
+- `required` - Whether to fill in, default `false`
+- `maxItems` - Maximum number of files
+- `title` - UI display title
+- `description` - UI description text
+
+#### `uploadFiles`
+
+Allow users to upload files from their local machine.
+
+```json
+{
+  "uploadFiles": {
+    "title": "Upload Files",
+    "description": "Supports PDF and images",
+    "enabled": true,
+    "required": false,
+    "maxItems": 10,
+    "acceptMime": ["application/pdf", "image/png"]
+  }
+}
+```
+
+**Configuration items:**
+
+- `enabled` - Whether to enable, default `true`
+- `required` - Whether to fill in, default `false`
+- `maxItems` - Maximum number of files
+- `acceptMime` - Allowable MIME type list (browser-level prompt, not强制验证)
+- `title` - UI display title
+- `description` - UI description text
+
+### `examples`
+
+The example input is used for UI pre-filling and user guidance. **It is strongly recommended to configure examples for the input spec**.
+
+```json
+{
+  "examples": [
+    {
+      "name": "Default search",
+      "params": { "query": "Maia", "limit": 10 }
+    },
+    {
+      "name": "Deep search",
+      "params": { "query": "workflow automation", "limit": 50 }
+    }
+  ]
+}
+```
+
+**Example fields:**
+
+- `name` - Example name
+- `params` - Example parameter values
+- `urlFiles` - Example URL file list (optional)
+- `uploadNotes` - Upload file prompt description (optional)
+
+<Aside type="tip" title="UI pre-fill rules">
+UI usually automatically pre-fills the first example (`examples[0]`), and it is recommended to place the most commonly used scenarios at the top.
+</Aside>
+
+## Input validation mechanism
+
+### Validation timing
+
+The system will validate the input in the following cases:
+
+- When creating a task
+- When creating/updating a scheduling rule
+- When updating a batch
+
+If the input parameters do not conform to the spec, the operation will be rejected.
+
+### Reserved key constraints
+
+The following top-level key names are reserved by the system, **not allowed** to be used in the input spec:
+
+- `files` - System-managed file metadata
+- `upstream` - Upstream step outputs
+- `urlFiles` - System internal use
+
+If the reserved keys are used in `paramsSchema.properties` or `examples[].params`, the system will automatically reject the input.
+
+<Aside type="caution" title="Why reserve these keys">
+These keys are used to pass system information and file metadata, and are not part of the user parameter space. Using them in parameter definitions will cause naming conflicts and security issues.
+</Aside>
+
+## Complete examples
+
+### 1. pure parameter input
+
+A workflow that does not require file input, such as API calls, data queries, etc.
+
+<Tabs>
+<TabItem label="Input spec">
+```json
+{
+  "version": 2,
+  "paramsSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "query": { 
+        "type": "string", 
+        "title": "Query keywords", 
+        "minLength": 1 
+      },
+      "limit": { 
+        "type": "integer", 
+        "title": "Result count", 
+        "minimum": 1, 
+        "maximum": 100, 
+        "default": 10 
+      },
+      "sort": {
+        "type": "string",
+        "title": "Sorting method",
+        "enum": ["relevance", "date"],
+        "default": "relevance"
+      }
+    },
+    "required": ["query"]
+  },
+  "examples": [
+    { 
+      "name": "Default", 
+      "params": { "query": "Maia", "limit": 10, "sort": "relevance" } 
+    }
+  ]
+}
+```
+</TabItem>
+<TabItem label="Step code">
+```js
+export default {
+  async main(env, ctx) {
+    const { params } = ctx;
+
+    // Get the input parameters from the context
+    const query = String(params.query ?? "").trim();
+    const limit = Number(params.limit ?? 10);
+    const sort = params.sort === "date" ? "date" : "relevance";
+
+    ctx.log("[inputs]", { query, limit, sort });
+
+    // Output parameters to downstream
+    return {
+      outputs: {
+        query,
+        limit,
+        sort,
+      },
+    };
+  },
+};
+```
+</TabItem>
+</Tabs>
+
+### 2. parameter with file upload
+
+A workflow that requires processing local files, such as document analysis, image processing, etc.
+
+<Tabs>
+<TabItem label="Input spec">
+
+```json
+{
+  "version": 2,
+  "paramsSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "extractImages": { 
+        "type": "boolean", 
+        "title": "Extract images", 
+        "default": false 
+      }
+    }
+  },
+  "filesInput": {
+    "urlFiles": { "enabled": false },
+    "uploadFiles": {
+      "title": "Upload documents",
+      "description": "Supports PDF and Word documents, up to 5",
+      "enabled": true,
+      "required": true,
+      "maxItems": 5,
+      "acceptMime": ["application/pdf", "application/msword"]
+    }
+  },
+  "examples": [
+    { 
+      "name": "Basic extraction", 
+      "params": { "extractImages": false },
+      "uploadNotes": "Upload the documents to be analyzed"
+    }
+  ]
+}
+```
+</TabItem>
+<TabItem label="Step code">
+```js
+import path from "node:path";
+
+export default {
+  async main(env, ctx) {
+    const { params, files } = ctx;
+
+    const extractImages = Boolean(params.extractImages ?? false);
+
+    // Note: files is a system reserved key (not allowed to be declared in 
+    // paramsSchema), but the system will write the input files into params.
+    // files at runtime
+    const all = Array.isArray(params.files) ? params.files : [];
+    const uploads = all.filter(
+      (f) => f && f.source === "upload" && f.status === "ready" && typeof f.path === "string",
+    );
+
+    // When accessing file content: absPath = runDir + runRelativePath
+    const runDir = String(files?.dirs?.runDir ?? "");
+    const uploadAbsPaths = uploads.map((f) => path.join(runDir, f.path));
+
+    ctx.log("[inputs]", { extractImages, uploadCount: uploads.length });
+
+    return {
+      outputs: {
+        extractImages,
+        upload_files: uploads.map((f) => ({ id: f.id, name: f.name, path: f.path })),
+        upload_abs_paths: uploadAbsPaths,
+      },
+    };
+  },
+};
+```
+</TabItem>
+</Tabs>
+
+### 3. URL batch processing
+
+A workflow that requires batch processing of network resources, such as web scraping, link checking, etc.
+
+<Tabs>
+<TabItem label="Input spec">
+```json
+{
+  "version": 2,
+  "paramsSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "timeout": { 
+        "type": "integer", 
+        "title": "Request timeout (seconds)", 
+        "minimum": 1, 
+        "maximum": 300, 
+        "default": 30 
+      }
+    }
+  },
+  "filesInput": {
+    "uploadFiles": { "enabled": false },
+    "urlFiles": {
+      "title": "URL list",
+      "description": "One URL per line, up to 100",
+      "enabled": true,
+      "required": true,
+      "maxItems": 100
+    }
+  },
+  "examples": [
+    { 
+      "name": "Link checking", 
+      "params": { "timeout": 30 },
+      "urlFiles": [
+        { "url": "https://example.com/page1" },
+        { "url": "https://example.com/page2" }
+      ]
+    }
+  ]
+}
+```
+</TabItem>
+<TabItem label="Step code">
+```js
+import path from "node:path";
+
+export default {
+  async main(env, ctx) {
+    const { params, files } = ctx;
+
+    const timeout = Number(params.timeout ?? 30);
+
+    // The URL list will also be written into params.files (source: "url")
+    const all = Array.isArray(params.files) ? params.files : [];
+    const urlFiles = all.filter((f) => f && f.source === "url");
+
+    // When the run enters RUNNING, the URL files are usually downloaded and have a path
+    const runDir = String(files?.dirs?.runDir ?? "");
+    const ready = urlFiles.filter((f) => f.status === "ready" && typeof f.path === "string");
+    const targets = ready.map((f) => ({
+      id: f.id,
+      name: f.name,
+      url: f.url,
+      absPath: path.join(runDir, f.path),
+    }));
+
+    ctx.log("[inputs]", { timeout, urlCount: targets.length });
+
+    return {
+      outputs: {
+        timeout,
+        targets,
+      },
+    };
+  },
+};
+```
+</TabItem>
+</Tabs>

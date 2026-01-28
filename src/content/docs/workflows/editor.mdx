@@ -1,0 +1,55 @@
+---
+title: Editor
+description: Use the visual editor to create and manage workflows, edit step code, and define dependencies.
+---
+
+import { Aside } from "@astrojs/starlight/components"
+
+The workflow editor uses a graph-first design to visualize and manage DAGs.
+
+## Editor interface
+
+The editor consists of the following parts:
+
+- **Graph View** - Display step nodes and dependencies
+- **Step List** - List all steps and their basic information
+- **Code Editor** - Edit the script code of the selected step
+- **Configuration Panel** - Set the key, name, timeout, etc. of the step
+
+![Setup appearance](/src/assets/tutorial/workflows/editor.png)
+
+## Create and manage steps
+
+### Add steps
+
+The `Add Step` button above the editor can add steps. Clicking the added step node will enter the step editing mode.
+
+The configurable items are:
+
+- **Step Key**: `stepKey`, the stable unique identifier of the step, used for dependency reference and upstream output reading.
+- **Name**: The readable name for UI display.
+- **Timeout**: The maximum execution time for a single step execution, exceeding which will terminate the execution and mark the step as failed.
+- **Script (ESM)**: The execution logic code of the step.
+
+### Delete steps
+
+- Right-click on the step to delete
+- Select the step and press the backspace key to delete
+- Select one or more nodes in selection mode, and delete in the context menu of the editor
+
+### Disconnect steps
+
+- Right-click on the connection to disconnect
+- Select the connection and press the backspace key to delete
+- Right-click on the step to disconnect the dependency
+
+## Shortcuts
+
+| Shortcut | Function |
+|------|------|
+| `Q` | Switch to horizontal layout |
+| `W` | Switch to vertical layout |
+| `E` | Switch to custom layout |
+| `V` | Pan mode |
+| `S` | Selection mode |
+| `⌘ + A`, `Ctrl + A` | Select all steps |

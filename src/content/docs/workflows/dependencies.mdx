@@ -1,0 +1,34 @@
+---
+title: Dependency
+description: Configure and manage the Node.js dependencies of the workflow, ensuring consistency and reproducibility of the execution environment.
+---
+
+import { Aside } from "@astrojs/starlight/components"
+
+Dependency management is used to install Node.js packages for the steps of the workflow and provide them to `import` at runtime.
+
+## Rules
+
+- **Package name**：Use npm package name (case-sensitive), not allowed to repeat.
+- **Version**：Support npm's semver range (e.g. `^1.2.3`, `~1.2.3`, `>=1 <2`).
+
+## Effective and caching
+
+- **Create version** when, the system will harden the dependency configuration and calculate `depsHash`.
+- **Execute Run** when, use the dependency directory corresponding to the `depsHash` of the version; if it has been installed, it will be reused directly.
+
+## Use in steps
+
+After installation, the step code can be directly `import`:
+
+```javascript
+import { z } from "zod";
+
+export default {
+  async main(env, ctx) {
+    const schema = z.object({ name: z.string() });
+    const data = schema.parse(ctx.params);
+    return { outputs: { name: data.name } };
+  },
+};
+```

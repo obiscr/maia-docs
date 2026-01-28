@@ -1,0 +1,124 @@
+---
+title: Reverse Proxy & HTTPS
+description: Why HTTPS is required when deploying Maia (Docker) on a server, and how to configure a reverse proxy.
+sidebar:
+  order: 999
+---
+
+import { Aside, Steps, Tabs, TabItem } from "@astrojs/starlight/components"
+
+Maia uses **Cookie session** to store login state. By default, the login state cookie includes the `Secure` attribute (can only be saved/carried in HTTPS requests) to prevent login state from being leaked over plaintext connections.
+
+The meaning of `Secure` is: **the browser will only save/carry this cookie in HTTPS requests**. If you access via plaintext HTTP (e.g., `http://<IP>:3690`), you will see typical symptoms:
+
+- The login endpoint may return **200 OK**
+- But the browser will not save the session cookie (or will not carry it in subsequent requests)
+- The page appears to "log in successfully but immediately returns to the login page" (login loop)
+
+This is an intentional security design. Therefore, **when providing Maia service on a server, users need to access it via HTTPS**. The most common approach is to place a **TLS-terminating reverse proxy** (Nginx / Caddy / cloud load balancer) in front of Maia, proxying to localhost `127.0.0.1:3690`.
+
+<Aside>
+You can also adjust this behavior via the environment variable `SESSION_COOKIE_SECURE=auto|true|false`:
+
+- **true / 1**: Always `Secure` (most secure)
+- **false / 0**: Never `Secure` (not recommended for public networks, only for internal HTTP networks where you explicitly accept the risk)
+- **auto**: Automatically determine based on external protocol (depends on the reverse proxy correctly passing `X-Forwarded-Proto` or standard `Forwarded`)
+</Aside>
+
+
+## Prerequisites
+
+To use Let's Encrypt to obtain a free certificate, you typically need:
+
+- **A domain name** (certificate issuance usually doesn't support bare IPs, such as `http://1.2.3.4`)
+- The domain's DNS `A/AAAA` records point to your server's public IP
+- The server's **80/443** ports are reachable from the public network (for validation and providing HTTPS)
+
+If your environment is **internal network/no public domain**, you can choose:
+
+- **Self-signed certificate** (browser will warn it's untrusted, but usable)
+- **Company/internal CA** (more standard)
+- **Terminate HTTPS at upstream gateway/load balancer** (gateway provides certificate), Maia only receives internal HTTP
+
+## Using Caddy
+
+Caddy can automatically request/renew Let's Encrypt certificates for public domains, with the simplest configuration.
+
+<Steps>
+1. Ensure Maia is accessible on the host: `http://127.0.0.1:3690`
+2. Install Caddy (follow official documentation for different systems)
+3. Create `Caddyfile`
+</Steps>
+
+```nginx
+maia.example.com {
+  reverse_proxy 127.0.0.1:3690
+}
+```
+
+After starting/reloading Caddy, you can directly access `https://maia.example.com`.
+
+## Using Nginx + Certbot
+
+### 1. Request certificate using Certbot
+
+Using Debian/Ubuntu as an example:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y certbot python3-certbot-nginx
+sudo certbot --nginx -d maia.example.com
+```
+
+Verify automatic renewal:
+
+```bash
+sudo certbot renew --dry-run
+```
+
+Certificates are typically located at:
+
+- `/etc/letsencrypt/live/maia.example.com/fullchain.pem`
+- `/etc/letsencrypt/live/maia.example.com/privkey.pem`
+
+### 2. Configure reverse proxy
+
+Create `/etc/nginx/conf.d/maia.conf`:
+
+```nginx
+server {
+  listen 80;
+  server_name maia.example.com;
+  return 301 https://$host$request_uri;
+}
+
+server {
+  listen 443 ssl http2;
+  server_name maia.example.com;
+
+  ssl_certificate     /etc/letsencrypt/live/maia.example.com/fullchain.pem;
+  ssl_certificate_key /etc/letsencrypt/live/maia.example.com/privkey.pem;
+
+  location / {
+    proxy_pass http://127.0.0.1:3690;
+
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    proxy_buffering off;
+    proxy_read_timeout 3600s;
+  }
+}
+```
+
+Check and reload:
+
+```bash
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+## Quick Self-Check
+
+Access using **HTTPS**: `https://maia.example.com`. If everything is working correctly, you will see Maia's login page and be able to log in successfully.

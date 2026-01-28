@@ -1,0 +1,20 @@
+---
+title: Import & export
+description: Use the import and export functions to share workflows, backup configurations, and migrate to different environments.
+---
+
+import { Aside } from "@astrojs/starlight/components"
+
+The workflow supports import and export functions, for sharing, backing up, and migrating workflows.
+
+## Export workflow
+
+In the workflow list page or details page, you can export the workflow. You can choose to export environment variables when exporting. The export format is `.json`.
+
+<Aside type="caution" title="Environment variables">
+Environment variables are often used to store sensitive information such as API keys and passwords. Exercise caution and do not leak.
+</Aside>
+
+## Import workflow
+
+In the workflow list page, you can click the `Import` button, select the `.json` file of the workflow, preview the content, and confirm that there is no error to import.

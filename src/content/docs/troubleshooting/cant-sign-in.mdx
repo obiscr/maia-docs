@@ -1,0 +1,55 @@
+---
+title: Unable to sign in (sign-in loop)
+description: The sign-in request returns 200, but the UI stays on the sign-in page or repeatedly redirects back to it.
+---
+
+The most common cause is that **the browser fails to persist the sign-in session**, so subsequent requests are still treated as **unauthenticated**.
+
+Typical symptoms:
+
+- The sign-in request returns **200 OK**
+- But after refresh you end up back on `/signin` (or you keep going through `/auth/redirect` and returning to the sign-in page)
+- Backend logs look normal, but you **still can’t stay signed in**
+
+## Why this happens
+
+Maia uses a **cookie-based session** to store your authentication state. If the session cookie is marked `Secure`, the browser will only **store and send that cookie over HTTPS**.
+
+If you access Maia over plain HTTP (for example, `http://<IP>:3690`), the browser may refuse to store the cookie. This results in a sign-in loop where the request “succeeds”, but you are immediately redirected back to the sign-in page.
+
+## Fix
+
+Maia provides an environment variable to control this behavior:
+
+- `SESSION_COOKIE_SECURE=true|false|auto`
+
+Recommended settings:
+
+- **Public HTTPS (reverse proxy / load balancer)**: set `SESSION_COOKIE_SECURE=auto`
+- **Strictly internal-only and intentionally HTTP**: set `SESSION_COOKIE_SECURE=false` (**not recommended for Internet-facing deployments**)
+
+### Setup the environment variable
+
+Add `SESSION_COOKIE_SECURE=auto` to your `.env.production` file:
+
+```dotenv title=".env.production" ins={1}
+SESSION_COOKIE_SECURE=auto
+```
+
+### Recreate the container
+
+Setting `SESSION_COOKIE_SECURE=...` in `.env.production` does not necessarily mean it will be injected into the container automatically. Make sure your `docker-compose*.yml` passes it into the `maia` service via `environment:` or `env_file:`.
+
+If you build the image from source:
+
+```bash
+docker compose --env-file .env.production up -d --build --force-recreate
+```
+
+If you are using the release compose file:
+
+```bash
+docker compose -f docker-compose.release.yml --env-file .env.production up -d --force-recreate
+```
+
+If everything is configured correctly, you should be able to sign in successfully and the sign-in loop will stop.
