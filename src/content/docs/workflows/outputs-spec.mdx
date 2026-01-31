@@ -3,7 +3,7 @@ title: Output spec
 description: Define a stable output contract for the workflow, providing a reliable data interface for downstream systems.
 ---
 
-import { Aside } from "@astrojs/starlight/components"
+import { Aside, Tabs, TabItem } from "@astrojs/starlight/components"
 
 The output spec allows you to map the output of a **specific step** to the **stable output** published by the workflow.
 
@@ -64,37 +64,111 @@ If the source step did not execute successfully, or the field pointed to by `fie
 
 ## Examples
 
-### 1. Publish the entire outputs
+There is a workflow with the following structure:
+
+```mermaid
+graph LR
+  A[Step 1（step_1）] --> B[Step 2（step_2）] --> C[Step 3（step_3）]
+```
+
+Step scripts:
+
+<Tabs>
+<TabItem label="Step 1">
+```js
+export default {
+  async main(env, ctx) {
+    return {
+      outputs: {
+        items: ["a", "b", "c"],
+        count: 3,
+        source: "demo",
+      },
+    }
+  },
+}
+```
+</TabItem>
+<TabItem label="Step 2">
+```js
+export default {
+  async main(env, ctx) {
+    const s1 = ctx.upstream["step_1"]?.data?.outputs ?? null
+    if (!s1) throw new Error("Missing upstream outputs: step_1")
+
+    return {
+      outputs: {
+        itemsUpper: (s1.items ?? []).map((x) => String(x).toUpperCase()),
+        count: Number(s1.count ?? 0),
+        summary: `count=${Number(s1.count ?? 0)}`,
+      },
+    }
+  },
+}
+```
+</TabItem>
+<TabItem label="Step 3">
+```js
+export default {
+  async main(env, ctx) {
+    const s2 = ctx.upstream["step_2"]?.data?.outputs ?? null
+    if (!s2) throw new Error("Missing upstream outputs: step_2")
+
+    return {
+      outputs: {
+        status: "ok",
+        text: `items=${JSON.stringify(s2.itemsUpper ?? [])}`,
+        itemCount: Number(s2.count ?? 0),
+      },
+    }
+  },
+}
+```
+</TabItem>
+</Tabs>
+
+### 1. Output all properties of all steps
 
 ```json
 {
   "version": 1,
   "outputs": {
-    "result": { "stepKey": "main" }
+    "step1": { "stepKey": "step_1" },
+    "step2": { "stepKey": "step_2" },
+    "step3": { "stepKey": "step_3" }
   }
 }
 ```
 
-### 2. Publish only one field
+### 2. Output all properties of step 1 and 2 + some properties of step 3
 
 ```json
 {
   "version": 1,
   "outputs": {
-    "summaryText": { "stepKey": "summarize", "field": "text" }
+    "step1": { "stepKey": "step_1" },
+    "step2": { "stepKey": "step_2" },
+    "status": { "stepKey": "step_3", "field": "status" },
+    "text": { "stepKey": "step_3", "field": "text" }
   }
 }
 ```
 
-### 3. Aggregate from multiple steps
+### 3. Output some properties of step 1, 2 and 3
 
 ```json
 {
   "version": 1,
   "outputs": {
-    "items": { "stepKey": "extract", "field": "items" },
-    "itemCount": { "stepKey": "extract", "field": "count" },
-    "status": { "stepKey": "validate", "field": "status" }
+    "items": { "stepKey": "step_1", "field": "items" },
+    "count": { "stepKey": "step_1", "field": "count" },
+    "summary": { "stepKey": "step_2", "field": "summary" },
+    "status": { "stepKey": "step_3", "field": "status" },
+    "itemCount": { "stepKey": "step_3", "field": "itemCount" }
   }
 }
 ```
+
+<Aside type="note" title="Note">
+When aggregating, the latest successful output of the source step will be read; when the step does not execute successfully or the field does not exist, the corresponding output value is `null`.
+</Aside>
