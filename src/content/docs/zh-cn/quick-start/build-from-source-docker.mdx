@@ -119,18 +119,21 @@ docker compose --env-file .env.production up -d --build --force-recreate
 
 ### 数据库迁移
 
-Maia 容器在启动时会自动检测并执行新的数据库迁移。更新流程会：
+Docker（从源码构建）模式下，数据库迁移由一个**一次性**的 `migrator` 服务负责：
 
-1. 拉取最新代码（包含新的迁移文件）
-2. 重新构建镜像（将新迁移文件打包到镜像中）
-3. 重启容器时自动应用新迁移
+1. 你执行 `docker compose up ...` 后，`migrator` 会先运行 `prisma migrate deploy`
+2. 迁移成功后 `migrator` 会 **Exited (0)** 并退出（这是正常现象）
+3. `maia` / `runner` 会在迁移成功后才启动
 
-<Aside type="note" title="迁移机制">
-Maia 使用内置的迁移器读取 `prisma/migrations/` 目录，并通过 `_prisma_migrations` 表跟踪已应用的迁移。重启容器时会自动执行尚未应用的迁移。
-</Aside>
-
-如果需要手动触发迁移（例如调试），可以进入容器执行：
+如果你需要手动触发迁移（例如调试），推荐直接运行 migrator：
 
 ```bash
-docker compose --env-file .env.production exec app pnpm prisma:migrate
+docker compose --env-file .env.production run --rm migrator
+```
+
+### 验证迁移是否成功
+
+```bash
+docker compose --env-file .env.production ps -a
+docker compose --env-file .env.production logs migrator --no-log-prefix
 ```

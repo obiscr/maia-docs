@@ -68,8 +68,8 @@ pnpm prisma:migrate
 
 该命令会应用 `prisma/migrations/` 目录下的新迁移文件。
 
-<Aside type="tip" title="自动迁移">
-Maia 在首次启动或检测到数据库未初始化时会自动执行迁移。但为了确保及时应用最新的数据库变更，建议在更新后手动执行迁移命令。
+<Aside type="note" title="关于迁移">
+在本地 Dev 模式下，建议你在每次更新代码后**显式运行** `pnpm prisma:migrate`，避免因为数据库版本落后导致运行期报错。
 </Aside>
 
 ### 启动服务

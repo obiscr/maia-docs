@@ -48,24 +48,21 @@ docker compose -f docker-compose.release.yml --env-file .env.production up -d --
 
 ### Database migration
 
-When using pre-built images, database migrations are included in the image. When you pull a new image and restart the container:
+In Docker mode, database migrations are handled by a **one-time** `migrator` service. When you pull a new image and restart the container:
 
-1. **New image contains the latest migration files**
-2. **Container automatically detects and applies new migrations on startup**
-3. **Already applied migrations are skipped**
+1. The new image contains the latest migration files
+2. The `migrator` will run `prisma migrate deploy` before the `maia` container starts
+3. Already applied migrations are skipped
 
 The entire process requires no manual intervention - Maia automatically handles database version upgrades.
-
-<Aside type="tip" title="Migration safety">
-Maia's migrator checks the `_prisma_migrations` table to ensure each migration is only executed once. Even if the container restarts multiple times, completed migrations won't be re-applied.
-</Aside>
 
 ### Verify migration status
 
 If you need to confirm that migrations were successfully applied, you can view the container logs:
 
 ```bash
-docker compose -f docker-compose.release.yml --env-file .env.production logs app
+docker compose -f docker-compose.release.yml --env-file .env.production ps -a
+docker compose -f docker-compose.release.yml --env-file .env.production logs migrator --no-log-prefix
 ```
 
 The logs will show detailed information about migration execution.

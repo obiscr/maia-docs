@@ -118,18 +118,21 @@ docker compose --env-file .env.production up -d --build --force-recreate
 
 ### Database migration
 
-Maia containers automatically detect and apply new database migrations on startup. The update process:
+In Docker (from source code) mode, database migrations are handled by a **one-time** `migrator` service:
 
-1. Pull the latest code (including new migration files)
-2. Rebuild the image (package new migration files into the image)
-3. Automatically apply new migrations when the container restarts
+1. After you run `docker compose up ...`, the `migrator` will run `prisma migrate deploy` first
+2. The `migrator` will **Exited (0)** and exit (this is normal) after the migration is successful
+3. `maia` / `runner` will only start after the migration is successful
 
-<Aside type="note" title="Migration mechanism">
-Maia uses a built-in migrator to read the `prisma/migrations/` directory and tracks applied migrations via the `_prisma_migrations` table. When restarting the container, it automatically executes migrations that haven't been applied yet.
-</Aside>
-
-If you need to manually trigger migrations (e.g., for debugging), you can enter the container and execute:
+If you need to manually trigger migrations (for example, for debugging), you can run the migrator:
 
 ```bash
-docker compose --env-file .env.production exec app pnpm prisma:migrate
+docker compose --env-file .env.production run --rm migrator
+```
+
+### Verify migration status
+
+```bash
+docker compose --env-file .env.production ps -a
+docker compose --env-file .env.production logs migrator --no-log-prefix
 ```

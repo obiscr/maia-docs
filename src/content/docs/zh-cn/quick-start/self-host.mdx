@@ -60,24 +60,21 @@ docker compose -f docker-compose.release.yml --env-file .env.production up -d --
 
 ### 数据库迁移
 
-使用预构建镜像时，数据库迁移已包含在镜像中。当你拉取新镜像并重启容器时：
+使用预构建镜像时，数据库迁移由一个**一次性**的 `migrator` 服务负责。当你拉取新镜像并重启容器时：
 
 1. **新镜像包含最新的迁移文件**
-2. **容器启动时自动检测并执行新迁移**
+2. **`migrator` 会在 `maia` 容器启动前自动执行 `prisma migrate deploy`**
 3. **已应用的迁移会被跳过**
 
 整个过程无需手动干预，Maia 会自动处理数据库版本升级。
-
-<Aside type="tip" title="迁移安全性">
-Maia 的迁移器会检查 `_prisma_migrations` 表，确保每个迁移只执行一次。即使容器重启多次，也不会重复应用已完成的迁移。
-</Aside>
 
 ### 验证迁移状态
 
 如果需要确认迁移是否成功应用，可以查看容器日志：
 
 ```bash
-docker compose -f docker-compose.release.yml --env-file .env.production logs app
+docker compose -f docker-compose.release.yml --env-file .env.production ps -a
+docker compose -f docker-compose.release.yml --env-file .env.production logs migrator --no-log-prefix
 ```
 
 日志中会显示迁移执行的详细信息。

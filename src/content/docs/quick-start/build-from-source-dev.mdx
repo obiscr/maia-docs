@@ -68,8 +68,8 @@ pnpm prisma:migrate
 
 This command will apply new migration files from the `prisma/migrations/` directory.
 
-<Aside type="tip" title="Auto-migration">
-Maia automatically runs migrations on first startup or when the database is uninitialized. However, to ensure timely application of the latest database changes, it's recommended to manually run the migration command after updates.
+<Aside type="note" title="About migration">
+In local Dev mode, it is recommended that you explicitly run `pnpm prisma:migrate` after each code update to avoid runtime errors due to outdated database versions.
 </Aside>
 
 ### Start the service
