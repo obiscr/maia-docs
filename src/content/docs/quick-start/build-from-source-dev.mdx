@@ -26,11 +26,17 @@ Local Dev mode is usually used for quick **development/debugging**. In Dev mode,
 2. Install dependencies
 
    ```bash
-   corepack enable
    pnpm install
    ```
 
-3. Start development service
+3. Generate Prisma Client & initialize database
+
+   ```bash
+   pnpm prisma:generate
+   pnpm prisma:migrate
+   ```
+
+4. Start development service
 
    ```bash
    pnpm dev
